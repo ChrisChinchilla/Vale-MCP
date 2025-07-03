@@ -136,14 +136,14 @@ server.tool(
         text: z.string().describe("Text to lint"),
     },
     async ({ text }) => {
-        const args = ["--output=line"];
+        const args = ["--output=line", "--no-exit"];
         const result = await callVale("vale", [...args, `"${text}"`]);
         if (!result) {
             return {
                 content: [
                     {
                         type: "text",
-                        text: "Failed to lint text",
+                        text: result,
                     },
                 ],
             };
