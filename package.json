@@ -1,6 +1,6 @@
 {
   "name": "vale-mcp",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "main": "index.js",
   "type": "module",
   "bin": {
@@ -13,9 +13,9 @@
     "build"
   ],
   "keywords": [],
-  "author": "",
+  "author": "Chris Chinchilla",
   "license": "ISC",
-  "description": "",
+  "description": "An MCP server for Vale",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.13.3",
     "zod": "^3.25.71"

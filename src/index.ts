@@ -17,6 +17,8 @@ const server = new McpServer({
   },
 });
 
+// TODO: Will data formatter help?
+
 // Helper function for calling vale binary
 async function callVale<T>(
   binaryPath: string,
@@ -66,6 +68,7 @@ async function main() {
   const transport = new StdioServerTransport();
 
   await server.connect(transport);
+  // TODO: Logging doesn't seem to work
   //   server.sendLoggingMessage({
   //   level: "info",
   //   data: "Server started successfully",
