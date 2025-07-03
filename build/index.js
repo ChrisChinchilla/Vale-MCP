@@ -17,9 +17,8 @@ const server = new McpServer({
 // Helper function for calling vale binary
 async function callVale(binaryPath, args = []) {
     try {
-        const { stdout } = await execFileAsync(binaryPath, args);
-        const json = JSON.parse(stdout);
-        return json;
+        const result = await execFileAsync(binaryPath, args);
+        return result.stdout;
     }
     catch (err) {
         console.error('Error calling binary or parsing JSON:', err);
@@ -87,21 +86,44 @@ function formatAlert(feature) {
 server.tool("style-text", "Lint text using Vale", {
     text: z.string().describe("Text to lint"),
 }, async ({ text }) => {
-    const args = ["--output-JSON"];
+    const args = ["--output=line"];
     const result = await callVale("vale", [...args, `"${text}"`]);
-    return result;
-    // return {
-    //     content: [
-    //         {
-    //             type: "text",
-    //             text: result,
-    //         },
-    //     ],
-    // };
+    if (!result) {
+        return {
+            content: [
+                {
+                    type: "text",
+                    text: "Failed to lint text",
+                },
+            ],
+        };
+    }
+    else {
+        return {
+            content: [
+                {
+                    type: "text",
+                    text: result,
+                },
+            ],
+        };
+    }
 });
+// async function main() {
+//   const transport = new StdioServerTransport();
+// await server.connect(transport);
+// //   server.sendLoggingMessage({
+//     //   ],
+//     // };
+//     }
+// );
 async function main() {
     const transport = new StdioServerTransport();
     await server.connect(transport);
+    //   server.sendLoggingMessage({
+    //   level: "info",
+    //   data: "Server started successfully",
+    // });
     console.error("Vale MCP Server running on stdio");
 }
 main().catch((error) => {
