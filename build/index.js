@@ -1,8 +1,8 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { execFile } from 'child_process';
-import { promisify } from 'util';
+import { execFile } from "child_process";
+import { promisify } from "util";
 const execFileAsync = promisify(execFile);
 // Create server instance
 const server = new McpServer({
@@ -21,68 +21,10 @@ async function callVale(binaryPath, args = []) {
         return result.stdout;
     }
     catch (err) {
-        console.error('Error calling binary or parsing JSON:', err);
+        console.error("Error calling binary or parsing JSON:", err);
         throw err;
     }
 }
-// Format alert data
-function formatAlert(feature) {
-    const props = feature.properties;
-    return [
-        `Event: ${props.event || "Unknown"}`,
-        `Area: ${props.areaDesc || "Unknown"}`,
-        `Severity: ${props.severity || "Unknown"}`,
-        `Status: ${props.status || "Unknown"}`,
-        `Headline: ${props.headline || "No headline"}`,
-        "---",
-    ].join("\n");
-}
-// Register weather tools
-// server.tool(
-//   "get-alerts",
-//   "Get weather alerts for a state",
-//   {
-//     state: z.string().length(2).describe("Two-letter state code (e.g. CA, NY)"),
-//   },
-//   async ({ state }) => {
-//     const stateCode = state.toUpperCase();
-//     const alertsUrl = `${NWS_API_BASE}/alerts?area=${stateCode}`;
-//     const alertsData = await makeNWSRequest<AlertsResponse>(alertsUrl);
-//     if (!alertsData) {
-//       return {
-//         content: [
-//           {
-//             type: "text",
-//             text: "Failed to retrieve alerts data",
-//           },
-//         ],
-//       };
-//     }
-//     const features = alertsData.features || [];
-//     if (features.length === 0) {
-//       return {
-//         content: [
-//           {
-//             type: "text",
-//             text: `No active alerts for ${stateCode}`,
-//           },
-//         ],
-//       };
-//     }
-//     const formattedAlerts = features.map(formatAlert);
-//     const alertsText = `Active alerts for ${stateCode}:\n\n${formattedAlerts.join(
-//       "\n"
-//     )}`;
-//     return {
-//       content: [
-//         {
-//           type: "text",
-//           text: alertsText,
-//         },
-//       ],
-//     };
-//   }
-// );
 server.tool("style-text", "Lint text using Vale", {
     text: z.string().describe("Text to lint"),
 }, async ({ text }) => {
@@ -109,14 +51,6 @@ server.tool("style-text", "Lint text using Vale", {
         };
     }
 });
-// async function main() {
-//   const transport = new StdioServerTransport();
-// await server.connect(transport);
-// //   server.sendLoggingMessage({
-//     //   ],
-//     // };
-//     }
-// );
 async function main() {
     const transport = new StdioServerTransport();
     await server.connect(transport);
