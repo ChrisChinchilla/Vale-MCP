@@ -14,6 +14,7 @@ Be warned that Vale itself does not use AI, so it doesn't always give applicable
 
 All the usual Vale rules apply, the server runs system-wide Vale and your system-wide Vale configuration. In the future I plan to add overrides to this.
 
-<iframe width="560" height="315" src="https://www.youtube.com/embed/sbJ51s7ZUC8?si=fVZnCZCByGnrk7VY" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+[![Screenshot of Vale MCP server](https://img.youtube.com/vi/sbJ51s7ZUC8/0.jpg)](https://www.youtube.com/watch?v=sbJ51s7ZUC8)
+
 
 For development, much the same as above, but to test changes, run `npm run build` to compile the TypeScript, then reload Claude (or whatever client you are using) to pick up the changes.
