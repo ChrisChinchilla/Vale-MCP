@@ -73,7 +73,7 @@ async function main() {
   //   level: "info",
   //   data: "Server started successfully",
   // });
-  console.error("Vale MCP Server running on stdio");
+  console.debug("Vale MCP Server running on stdio");
 }
 
 main().catch((error) => {

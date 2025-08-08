@@ -14,6 +14,7 @@ const server = new McpServer({
         logging: {},
     },
 });
+// TODO: Will data formatter help?
 // Helper function for calling vale binary
 async function callVale(binaryPath, args = []) {
     try {
@@ -54,6 +55,7 @@ server.tool("style-text", "Lint text using Vale", {
 async function main() {
     const transport = new StdioServerTransport();
     await server.connect(transport);
+    // TODO: Logging doesn't seem to work
     //   server.sendLoggingMessage({
     //   level: "info",
     //   data: "Server started successfully",

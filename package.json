@@ -17,11 +17,11 @@
   "license": "ISC",
   "description": "An MCP server for Vale",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.13.3",
-    "zod": "^3.25.71"
+    "@modelcontextprotocol/sdk": "^1.17.2",
+    "zod": "^4.0.15"
   },
   "devDependencies": {
-    "@types/node": "^24.0.10",
-    "typescript": "^5.8.3"
+    "@types/node": "^24.2.0",
+    "typescript": "^5.9.2"
   }
 }
