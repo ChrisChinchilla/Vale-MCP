@@ -1,24 +1,44 @@
 {
   "name": "vale-mcp",
   "version": "0.1.0",
-  "main": "index.js",
+  "description": "MCP server for Vale linting integration",
+  "main": "build/index.js",
   "type": "module",
   "bin": {
-    "vale-cli": "./build/index.js"
+    "vale-cli": "build/index.js"
   },
   "scripts": {
-    "build": "tsc && chmod 755 build/index.js"
+    "build": "tsc && chmod 755 build/index.js",
+    "watch": "tsc --watch",
+    "start": "node build/index.js",
+    "install:global": "npm link",
+    "uninstall:global": "npm unlink -g vale-mcp",
+    "prepublishOnly": "npm run build"
   },
   "files": [
-    "build"
+    "build",
+    "readme.md"
   ],
-  "keywords": [],
+  "keywords": [
+    "mcp",
+    "vale",
+    "linting",
+    "documentation",
+    "style-guide",
+    "prose",
+    "writing"
+  ],
   "author": "Chris Chinchilla",
-  "license": "ISC",
-  "description": "An MCP server for Vale",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/chrischinchilla/vale-mcp.git"
+  },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.17.2",
-    "zod": "^4.0.15"
+    "@modelcontextprotocol/sdk": "^1.17.2"
   },
   "devDependencies": {
     "@types/node": "^24.2.0",
