@@ -36,20 +36,24 @@ npm install
 npm run build
 ```
 
-### Install globally
+### Install globally (recommended for most users)
+
+Installing globally creates a `vale-cli` command available system-wide:
 
 ```bash
-# Install globally using npm link
+# From the Vale-MCP directory
 npm run install:global
 ```
 
-This creates a global `vale-cli` command that you can use from anywhere.
+This creates a global `vale-cli` command that you can use from anywhere, making it easy to configure in AI assistants.
 
 To uninstall:
 
 ```bash
 npm run uninstall:global
 ```
+
+**Note:** If you're actively developing and making changes, you can skip global installation and use the absolute path to `build/index.js` instead (see integration examples below).
 
 ## Using with AI assistants
 
@@ -89,15 +93,90 @@ For debug mode:
 
 Restart Claude Desktop after updating the configuration.
 
+### VS Code (GitHub Copilot)
+
+There are two ways to add the Vale MCP server to VS Code:
+
+#### Option A: Command Palette (easiest)
+
+1. Open the Command Palette: Press `Ctrl+Shift+P` (Windows/Linux) or `Cmd+Shift+P` (Mac)
+2. Run: Type `MCP: Add Server` and select it
+3. Provide server information:
+   - **Name:** `vale` (or any name you prefer)
+   - **Type:** Select `stdio`
+   - **Command:** `vale-cli` (if installed globally) or `node`
+   - **Arguments:** 
+     - If using `vale-cli`: Leave empty or add `--debug`
+     - If using `node`: Add the path like `/Users/fabri/repos/FrankenMCP/Vale-MCP/build/index.js`
+4. Choose scope: User configuration (global) or Workspace (project-specific)
+
+#### Option B: Manual configuration
+
+Add to your VS Code settings file:
+
+**Using global install:**
+```json
+{
+  "github.copilot.chat.mcp.servers": {
+    "vale": {
+      "command": "vale-cli",
+      "args": []
+    }
+  }
+}
+```
+
+**Using absolute path (no global install needed):**
+```json
+{
+  "github.copilot.chat.mcp.servers": {
+    "vale": {
+      "command": "node",
+      "args": ["/absolute/path/to/Vale-MCP/build/index.js"]
+    }
+  }
+}
+```
+
+**With debug mode:**
+```json
+{
+  "github.copilot.chat.mcp.servers": {
+    "vale": {
+      "command": "vale-cli",
+      "args": ["--debug"]
+    }
+  }
+}
+```
+
+**Verify in VS Code:**
+- Open GitHub Copilot Chat
+- Type `/mcp` to see available MCP tools
+- The Vale tools should appear in the list
+
 ### Cursor
 
 Add to your Cursor MCP settings (follow [Cursor's MCP documentation](https://docs.cursor.com/advanced/model-context-protocol)):
 
+**Using global install:**
 ```json
 {
   "mcpServers": {
     "vale": {
       "command": "vale-cli"
+    }
+  }
+}
+```
+
+**Using absolute path:**
+```json
+{
+  "mcpServers": {
+    "vale": {
+      "command": "node",
+      "args": ["/absolute/path/to/Vale-MCP/build/index.js"]
     }
   }
 }
