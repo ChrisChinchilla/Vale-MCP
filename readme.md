@@ -9,8 +9,8 @@ This MCP server provides AI assistants with the ability to check files for style
 ## Features
 
 - ✅ File linting: Check any text file for style issues with Vale
-- 🔍 Smart config discovery: Automatically finds `.vale.ini` files using Vale's native upward search
-- 🎯 Configuration priority: Supports `VALE_CONFIG_PATH` environment variable for explicit config
+- 🔍 Smart configuration discovery: Automatically finds `.vale.ini` files using Vale's native upward search
+- 🎯 Configuration priority: Supports `VALE_CONFIG_PATH` environment variable for explicit configuration
 - 📊 Rich formatting: Returns markdown-formatted results with emojis and severity grouping
 - 🛡️ Graceful degradation: Provides helpful installation guidance when Vale isn't installed
 - 🐛 Debug mode: Optional debug logging for troubleshooting
@@ -57,7 +57,7 @@ npm run uninstall:global
 
 ## Using with AI assistants
 
-The Vale MCP server can be integrated with AI coding assistants that support the MCP standard.
+AI coding assistants that support the MCP standard can integrate the Vale MCP server.
 
 ### Claude Desktop
 
@@ -95,7 +95,7 @@ Restart Claude Desktop after updating the configuration.
 
 ### VS Code (GitHub Copilot)
 
-There are two ways to add the Vale MCP server to VS Code:
+You can add the Vale MCP server to VS Code in two ways:
 
 #### Option A: Command Palette (easiest)
 
@@ -105,7 +105,7 @@ There are two ways to add the Vale MCP server to VS Code:
    - **Name:** `vale` (or any name you prefer)
    - **Type:** Select `stdio`
    - **Command:** `vale-cli` (if installed globally) or `node`
-   - **Arguments:** 
+   - **Arguments:**
      - If using `vale-cli`: Leave empty or add `--debug`
      - If using `node`: Add the path like `/Users/fabri/repos/FrankenMCP/Vale-MCP/build/index.js`
 4. Choose scope: User configuration (global) or Workspace (project-specific)
@@ -115,6 +115,7 @@ There are two ways to add the Vale MCP server to VS Code:
 Add to your VS Code settings file:
 
 **Using global install:**
+
 ```json
 {
   "github.copilot.chat.mcp.servers": {
@@ -127,6 +128,7 @@ Add to your VS Code settings file:
 ```
 
 **Using absolute path (no global install needed):**
+
 ```json
 {
   "github.copilot.chat.mcp.servers": {
@@ -139,6 +141,7 @@ Add to your VS Code settings file:
 ```
 
 **With debug mode:**
+
 ```json
 {
   "github.copilot.chat.mcp.servers": {
@@ -151,6 +154,7 @@ Add to your VS Code settings file:
 ```
 
 **Verify in VS Code:**
+
 - Open GitHub Copilot Chat
 - Type `/mcp` to see available MCP tools
 - The Vale tools should appear in the list
@@ -160,6 +164,7 @@ Add to your VS Code settings file:
 Add to your Cursor MCP settings (follow [Cursor's MCP documentation](https://docs.cursor.com/advanced/model-context-protocol)):
 
 **Using global install:**
+
 ```json
 {
   "mcpServers": {
@@ -171,6 +176,7 @@ Add to your Cursor MCP settings (follow [Cursor's MCP documentation](https://doc
 ```
 
 **Using absolute path:**
+
 ```json
 {
   "mcpServers": {
@@ -206,7 +212,7 @@ Once configured, you can ask your AI assistant to:
 - "Check docs/guide.md using Vale"
 - "Lint this markdown file for style issues"
 - "What style issues does Vale find in README.md?"
-- "Run vale_sync to download the style packages"
+- "Run `vale_sync` to download the style packages"
 - "Is Vale installed on this system?"
 
 ## Available tools
@@ -218,11 +224,13 @@ The server provides three MCP tools:
 Check if you have installed Vale and can access it.
 
 **Returns:**
+
 - Installation status (installed/not installed)
 - Vale version (if installed)
 - Platform-specific installation instructions (if not installed)
 
 **Example usage in AI:**
+
 > "Is Vale installed on this system?"
 
 ### `vale_sync`
@@ -230,35 +238,42 @@ Check if you have installed Vale and can access it.
 Download Vale styles and packages by running `vale sync`. Use this when you encounter errors about missing styles directories.
 
 **Parameters:**
+
 - `config_path` (optional): Path to `.vale.ini` file. If not provided, uses the server's configured path or searches in the current directory.
 
 **Returns:**
+
 - Success/failure status
 - Output from the sync operation
 - Helpful error messages if sync fails
 
 **When to use:**
+
 - When you see E100 errors: `"The path '/path/to/styles' does not exist"`
 - After creating or updating a `.vale.ini` file
 - When adding new packages to your Vale configuration
 
 **Example usage in AI:**
-> "Run vale_sync to download the required styles"
+
+> "Run `vale_sync` to download the required styles"
 
 ### `check_file`
 
 Lint a file at a specific path against Vale style rules.
 
 **Parameters:**
+
 - `path` (required): Absolute or relative path to the file
 
 **Returns:**
+
 - Formatted markdown with issues grouped by severity
 - Detailed issue information (line, column, rule, message, suggestion)
 - Summary statistics (errors, warnings, suggestions)
 - Structured metadata for programmatic access
 
 **Example usage in AI:**
+
 > "Check the README.md file for style issues"
 
 ## Command-line options
@@ -276,10 +291,10 @@ Options:
 
 The server searches for Vale configuration in the following order:
 
-1. **Per-file:** Config discovered from file's directory (for `check_file` tool)
+1. **Per-file:** Configuration discovered from file's directory (for `check_file` tool)
 2. **Server-wide:** `VALE_CONFIG_PATH` environment variable
 3. **Working directory:** `.vale.ini` in `process.cwd()`
-4. **Vale defaults:** Global config or built-in rules
+4. **Vale defaults:** Global configuration or built-in rules
 
 ### Example .vale.ini
 
@@ -340,19 +355,22 @@ npx tsc --noUnusedLocals --noUnusedParameters --noEmit
 
 ### Vale not found
 
-If you see errors about Vale not being installed:
+If you see errors about missing Vale installation:
 
 **macOS:**
+
 ```bash
 brew install vale
 ```
 
 **Linux:**
+
 ```bash
 sudo snap install vale
 ```
 
 **Windows:**
+
 ```bash
 choco install vale
 # or
