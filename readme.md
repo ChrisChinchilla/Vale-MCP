@@ -404,7 +404,7 @@ Check the MCP server logs in your AI assistant for detailed information.
 
 ## Credits
 
-Created by Chris Chinchilla.
+Created by @chrischinchilla and @theletterf
 
 ## License
 
