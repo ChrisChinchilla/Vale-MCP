@@ -24,4 +24,8 @@ export declare function syncValeStyles(configPath?: string): Promise<{
  * Runs Vale on a file at a specific path
  */
 export declare function checkFile(filePath: string, configPath?: string): Promise<CheckFileResult>;
+/**
+ * Runs Vale on text passed directly (via stdin)
+ */
+export declare function checkText(text: string, configPath?: string): Promise<CheckFileResult>;
 //# sourceMappingURL=vale-runner.d.ts.map
