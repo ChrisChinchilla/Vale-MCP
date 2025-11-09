@@ -360,7 +360,6 @@ export async function checkText(
 
   let stdout = "";
   try {
-    const { exec } = await import("child_process");
     const result = await new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
       const child = exec(command, execOptions, (error, stdout, stderr) => {
         if (error && !stdout) {
