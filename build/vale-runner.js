@@ -282,7 +282,7 @@ export async function checkFile(filePath, configPath) {
  */
 export async function checkText(text, configPath) {
     // Build Vale command - just pass text via stdin
-    let command = `vale --output=JSON`;
+    let command = `vale --output=JSON --stdin`;
     if (configPath) {
         command += ` --config="${configPath}"`;
         console.error(`Using explicit config: ${configPath}`);
@@ -297,7 +297,6 @@ export async function checkText(text, configPath) {
     };
     let stdout = "";
     try {
-        const { exec } = await import("child_process");
         const result = await new Promise((resolve, reject) => {
             const child = exec(command, execOptions, (error, stdout, stderr) => {
                 if (error && !stdout) {
