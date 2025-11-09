@@ -1,4 +1,4 @@
-import { exec } from "child_process";
+import { exec, ExecOptions } from "child_process";
 import { promisify } from "util";
 import * as fs from "fs/promises";
 import * as fsSync from "fs";
@@ -353,7 +353,7 @@ export async function checkText(
   }
 
   // Execute Vale with text as stdin
-  const execOptions: any = {
+  const execOptions: ExecOptions = {
     encoding: 'utf-8',
     cwd: process.cwd()
   };
