@@ -282,7 +282,7 @@ export async function checkFile(filePath, configPath) {
  */
 export async function checkText(text, configPath) {
     // Build Vale command - just pass text via stdin
-    let command = `vale --output=JSON --stdin`;
+    let command = `vale --output=JSON`;
     if (configPath) {
         command += ` --config="${configPath}"`;
         console.error(`Using explicit config: ${configPath}`);

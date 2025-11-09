@@ -343,7 +343,7 @@ export async function checkText(
   configPath?: string
 ): Promise<CheckFileResult> {
   // Build Vale command - just pass text via stdin
-  let command = `vale --output=JSON --stdin`;
+  let command = `vale --output=JSON`;
 
   if (configPath) {
     command += ` --config="${configPath}"`;
