@@ -7,7 +7,7 @@ import {
   ListToolsRequestSchema,
   Tool,
 } from "@modelcontextprotocol/sdk/types.js";
-import { checkValeInstalled, checkFile, syncValeStyles } from "./vale-runner.js";
+import { checkValeInstalled, checkFile, checkText, syncValeStyles } from "./vale-runner.js";
 import {
   loadConfig,
   verifyConfigFile,
@@ -238,6 +238,21 @@ const TOOLS: Tool[] = [
       required: ["path"],
     },
   },
+  {
+    name: "check_text",
+    description:
+      "Lint text content directly against Vale style rules without requiring a file. Useful for checking text snippets, clipboard content, or dynamically generated content. Returns issues found with their locations and severity.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        text: {
+          type: "string",
+          description: "The text content to check with Vale",
+        },
+      },
+      required: ["text"],
+    },
+  },
 ];
 
 // Handler for listing available tools
@@ -364,6 +379,51 @@ See Vale documentation: https://vale.sh/docs/topics/packages/`,
         const result = await checkFile(filePath, valeConfigPath);
 
         debug(`check_file result - file: ${result.file}, issues found: ${result.issues.length}, errors: ${result.summary.errors}, warnings: ${result.summary.warnings}, suggestions: ${result.summary.suggestions}`);
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: result.formatted,
+            },
+          ],
+          _meta: {
+            structured_data: {
+              file: result.file,
+              issues: result.issues,
+              summary: result.summary,
+            },
+          },
+        };
+      }
+
+      case "check_text": {
+        const { text } = args as { text: string };
+
+        debug(`check_text called - text length: ${text?.length}`);
+
+        if (!text) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify({
+                  error: "Missing required parameter: text",
+                }),
+              },
+            ],
+          };
+        }
+
+        // Check if Vale is available
+        const valeCheck = await checkValeInstalled();
+        if (!valeCheck.installed) {
+          return createValeNotInstalledResponse();
+        }
+
+        const result = await checkText(text, valeConfigPath);
+
+        debug(`check_text result - issues found: ${result.issues.length}, errors: ${result.summary.errors}, warnings: ${result.summary.warnings}, suggestions: ${result.summary.suggestions}`);
 
         return {
           content: [

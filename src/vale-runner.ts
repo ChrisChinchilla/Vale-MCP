@@ -1,4 +1,4 @@
-import { exec } from "child_process";
+import { exec, ExecOptions } from "child_process";
 import { promisify } from "util";
 import * as fs from "fs/promises";
 import * as fsSync from "fs";
@@ -285,7 +285,7 @@ export async function checkFile(
 
   // Build Vale command
   let command = `vale --output=JSON`;
-  
+
   // Only use --config if explicitly provided (e.g., from VALE_CONFIG_PATH env var)
   // Otherwise let Vale do its natural upward search from the file's location
   if (configPath) {
@@ -294,11 +294,11 @@ export async function checkFile(
   } else {
     console.error(`Letting Vale search for config from: ${path.dirname(absolutePath)}`);
   }
-  
+
   command += ` "${absolutePath}"`;
 
   // Run Vale from the file's directory so it searches upward from there
-  const execOptions: any = { 
+  const execOptions: any = {
     encoding: 'utf-8',
     cwd: path.dirname(absolutePath)
   };
@@ -330,6 +330,71 @@ export async function checkFile(
   return {
     formatted,
     file: absolutePath,
+    issues,
+    summary,
+  };
+}
+
+/**
+ * Runs Vale on text passed directly (via stdin)
+ */
+export async function checkText(
+  text: string,
+  configPath?: string
+): Promise<CheckFileResult> {
+  // Build Vale command - just pass text via stdin
+  let command = `vale --output=JSON`;
+
+  if (configPath) {
+    command += ` --config="${configPath}"`;
+    console.error(`Using explicit config: ${configPath}`);
+  } else {
+    console.error(`Using Vale defaults or searching for config from current directory`);
+  }
+
+  // Execute Vale with text as stdin
+  const execOptions: ExecOptions = {
+    encoding: 'utf-8',
+    cwd: process.cwd()
+  };
+
+  let stdout = "";
+  try {
+    const result = await new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
+      const child = exec(command, execOptions, (error, stdout, stderr) => {
+        if (error && !stdout) {
+          // Only reject if there's no output (means Vale failed to run)
+          reject(error);
+        } else {
+          // Vale returns non-zero exit code when there are issues, but still outputs JSON
+          const stdoutStr = typeof stdout === 'string' ? stdout : stdout?.toString('utf-8') || '';
+          const stderrStr = typeof stderr === 'string' ? stderr : stderr?.toString('utf-8') || '';
+          resolve({ stdout: stdoutStr, stderr: stderrStr });
+        }
+      });
+
+      // Write text to stdin and close
+      child.stdin?.write(text);
+      child.stdin?.end();
+    });
+
+    stdout = result.stdout;
+  } catch (error: any) {
+    const errorMessage = error.stderr || error.message || "Unknown error";
+    throw new Error(
+      `Vale execution failed: ${errorMessage}`
+    );
+  }
+
+  // Parse output
+  const rawOutput = parseValeOutput(stdout);
+  const issues = normalizeIssues(rawOutput);
+  const summary = generateSummary(issues);
+  const formatted = formatValeResults(issues, summary, `text input`);
+
+  return {
+    formatted,
+    file: `stdin`,
     issues,
     summary,
   };

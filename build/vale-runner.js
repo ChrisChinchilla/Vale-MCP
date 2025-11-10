@@ -277,4 +277,59 @@ export async function checkFile(filePath, configPath) {
         summary,
     };
 }
+/**
+ * Runs Vale on text passed directly (via stdin)
+ */
+export async function checkText(text, configPath) {
+    // Build Vale command - just pass text via stdin
+    let command = `vale --output=JSON`;
+    if (configPath) {
+        command += ` --config="${configPath}"`;
+        console.error(`Using explicit config: ${configPath}`);
+    }
+    else {
+        console.error(`Using Vale defaults or searching for config from current directory`);
+    }
+    // Execute Vale with text as stdin
+    const execOptions = {
+        encoding: 'utf-8',
+        cwd: process.cwd()
+    };
+    let stdout = "";
+    try {
+        const result = await new Promise((resolve, reject) => {
+            const child = exec(command, execOptions, (error, stdout, stderr) => {
+                if (error && !stdout) {
+                    // Only reject if there's no output (means Vale failed to run)
+                    reject(error);
+                }
+                else {
+                    // Vale returns non-zero exit code when there are issues, but still outputs JSON
+                    const stdoutStr = typeof stdout === 'string' ? stdout : stdout?.toString('utf-8') || '';
+                    const stderrStr = typeof stderr === 'string' ? stderr : stderr?.toString('utf-8') || '';
+                    resolve({ stdout: stdoutStr, stderr: stderrStr });
+                }
+            });
+            // Write text to stdin and close
+            child.stdin?.write(text);
+            child.stdin?.end();
+        });
+        stdout = result.stdout;
+    }
+    catch (error) {
+        const errorMessage = error.stderr || error.message || "Unknown error";
+        throw new Error(`Vale execution failed: ${errorMessage}`);
+    }
+    // Parse output
+    const rawOutput = parseValeOutput(stdout);
+    const issues = normalizeIssues(rawOutput);
+    const summary = generateSummary(issues);
+    const formatted = formatValeResults(issues, summary, `text input`);
+    return {
+        formatted,
+        file: `stdin`,
+        issues,
+        summary,
+    };
+}
 //# sourceMappingURL=vale-runner.js.map
