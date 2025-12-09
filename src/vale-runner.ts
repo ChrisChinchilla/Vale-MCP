@@ -298,7 +298,7 @@ export async function checkFile(
   command += ` "${absolutePath}"`;
 
   // Run Vale from the file's directory so it searches upward from there
-  const execOptions: any = {
+  const execOptions: ExecOptions = {
     encoding: 'utf-8',
     cwd: path.dirname(absolutePath)
   };
@@ -308,13 +308,14 @@ export async function checkFile(
   try {
     const result = await execAsync(command, execOptions);
     stdout = typeof result.stdout === 'string' ? result.stdout : result.stdout.toString('utf-8');
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Vale returns non-zero exit code when there are issues
     // But it still outputs JSON to stdout
-    if (error.stdout) {
-      stdout = error.stdout;
+    const execError = error as { stdout?: string; stderr?: string; message?: string };
+    if (execError.stdout) {
+      stdout = execError.stdout;
     } else {
-      const errorMessage = error.stderr || error.message || "Unknown error";
+      const errorMessage = execError.stderr || execError.message || "Unknown error";
       throw new Error(
         `Vale execution failed: ${errorMessage}`
       );
@@ -379,8 +380,9 @@ export async function checkText(
     });
 
     stdout = result.stdout;
-  } catch (error: any) {
-    const errorMessage = error.stderr || error.message || "Unknown error";
+  } catch (error: unknown) {
+    const execError = error as { stderr?: string; message?: string };
+    const errorMessage = execError.stderr || execError.message || "Unknown error";
     throw new Error(
       `Vale execution failed: ${errorMessage}`
     );

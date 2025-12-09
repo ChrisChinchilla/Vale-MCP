@@ -257,11 +257,12 @@ export async function checkFile(filePath, configPath) {
     catch (error) {
         // Vale returns non-zero exit code when there are issues
         // But it still outputs JSON to stdout
-        if (error.stdout) {
-            stdout = error.stdout;
+        const execError = error;
+        if (execError.stdout) {
+            stdout = execError.stdout;
         }
         else {
-            const errorMessage = error.stderr || error.message || "Unknown error";
+            const errorMessage = execError.stderr || execError.message || "Unknown error";
             throw new Error(`Vale execution failed: ${errorMessage}`);
         }
     }
@@ -317,7 +318,8 @@ export async function checkText(text, configPath) {
         stdout = result.stdout;
     }
     catch (error) {
-        const errorMessage = error.stderr || error.message || "Unknown error";
+        const execError = error;
+        const errorMessage = execError.stderr || execError.message || "Unknown error";
         throw new Error(`Vale execution failed: ${errorMessage}`);
     }
     // Parse output
