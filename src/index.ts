@@ -95,7 +95,11 @@ function getInstallationInstructions(): {
   documentation: string;
 } {
   const platform = process.platform;
-  const instructions: any = {
+  const instructions: {
+    platform: string;
+    methods: Array<{ name: string; command: string; url?: string }>;
+    documentation: string;
+  } = {
     platform,
     documentation: "https://vale.sh/docs/vale-cli/installation/",
     methods: [],
@@ -234,6 +238,10 @@ const TOOLS: Tool[] = [
           type: "string",
           description: "Absolute or relative path to the file to check",
         },
+        config_path: {
+          type: "string",
+          description: "Optional path to .vale.ini file. If not provided, Vale will search for .vale.ini starting from the file's directory and moving upward through parent directories.",
+        },
       },
       required: ["path"],
     },
@@ -248,6 +256,10 @@ const TOOLS: Tool[] = [
         text: {
           type: "string",
           description: "The text content to check with Vale",
+        },
+        config_path: {
+          type: "string",
+          description: "Optional path to .vale.ini file. If not provided, uses the server's configured path or searches in the current directory.",
         },
       },
       required: ["text"],
@@ -353,9 +365,9 @@ See Vale documentation: https://vale.sh/docs/topics/packages/`,
       }
 
       case "check_file": {
-        const { path: filePath } = args as { path: string };
+        const { path: filePath, config_path } = args as { path: string; config_path?: string };
 
-        debug(`check_file called - path: ${filePath}`);
+        debug(`check_file called - path: ${filePath}, config_path: ${config_path}`);
 
         if (!filePath) {
           return {
@@ -376,7 +388,9 @@ See Vale documentation: https://vale.sh/docs/topics/packages/`,
           return createValeNotInstalledResponse();
         }
 
-        const result = await checkFile(filePath, valeConfigPath);
+        // Only pass config_path if explicitly provided by the user
+        // This allows Vale to use its natural upward search from the file's directory
+        const result = await checkFile(filePath, config_path);
 
         debug(`check_file result - file: ${result.file}, issues found: ${result.issues.length}, errors: ${result.summary.errors}, warnings: ${result.summary.warnings}, suggestions: ${result.summary.suggestions}`);
 
@@ -398,9 +412,9 @@ See Vale documentation: https://vale.sh/docs/topics/packages/`,
       }
 
       case "check_text": {
-        const { text } = args as { text: string };
+        const { text, config_path } = args as { text: string; config_path?: string };
 
-        debug(`check_text called - text length: ${text?.length}`);
+        debug(`check_text called - text length: ${text?.length}, config_path: ${config_path}`);
 
         if (!text) {
           return {
@@ -421,7 +435,11 @@ See Vale documentation: https://vale.sh/docs/topics/packages/`,
           return createValeNotInstalledResponse();
         }
 
-        const result = await checkText(text, valeConfigPath);
+        // For check_text, we should use the provided config_path if given,
+        // otherwise fall back to the server's configured path since there's no file directory to search from
+        const effectiveConfigPath = config_path !== undefined ? config_path : valeConfigPath;
+
+        const result = await checkText(text, effectiveConfigPath);
 
         debug(`check_text result - issues found: ${result.issues.length}, errors: ${result.summary.errors}, warnings: ${result.summary.warnings}, suggestions: ${result.summary.suggestions}`);
 
