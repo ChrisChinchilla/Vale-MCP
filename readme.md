@@ -6,6 +6,10 @@ A [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server that i
 
 This MCP server provides AI assistants with the ability to check files for style and grammar issues using Vale's powerful linting engine. It automatically discovers Vale configuration files and provides formatted, actionable feedback about writing quality.
 
+## Quick install
+
+[<img src="https://img.shields.io/badge/VS_Code-VS_Code?style=flat-square&label=Install%20Server&color=0098FF" alt="Install in VS Code">](https://insiders.vscode.dev/redirect?url=vscode%3Amcp%2Finstall%3F%257B%2522name%2522%253A%2522vale%2522%252C%2522command%2522%253A%2522npx%2522%252C%2522args%2522%253A%255B%2522vale-mcp%2540latest%2522%255D%257D) [<img alt="Install in VS Code Insiders" src="https://img.shields.io/badge/VS_Code_Insiders-VS_Code_Insiders?style=flat-square&label=Install%20Server&color=24bfa5">](https://insiders.vscode.dev/redirect?url=vscode-insiders%3Amcp%2Finstall%3F%257B%2522name%2522%253A%2522vale%2522%252C%2522command%2522%253A%2522npx%2522%252C%2522args%2522%253A%255B%2522vale-mcp%2540latest%2522%255D%257D) [<img src="https://cursor.com/deeplink/mcp-install-dark.svg" alt="Install in Cursor">](https://cursor.com/install-mcp?name=Vale&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyJ2YWxlLW1jcEBsYXRlc3QiXX0=)
+
 ## Features
 
 - ✅ File linting: Check any text file for style issues with Vale
@@ -34,14 +38,8 @@ npm install
 
 # Build the TypeScript project
 npm run build
-```
 
-### Install globally (recommended for most users)
-
-Installing globally creates a `vale-cli` command available system-wide:
-
-```bash
-# From the Vale-MCP directory
+# Install globally (creates a system-wide vale-cli command)
 npm run install:global
 ```
 
@@ -95,7 +93,9 @@ Restart Claude Desktop after updating the configuration.
 
 ### VS Code (GitHub Copilot)
 
-You can add the Vale MCP server to VS Code in two ways:
+[<img src="https://img.shields.io/badge/VS_Code-VS_Code?style=flat-square&label=Install%20Server&color=0098FF" alt="Install in VS Code">](https://insiders.vscode.dev/redirect?url=vscode%3Amcp%2Finstall%3F%257B%2522name%2522%253A%2522vale%2522%252C%2522command%2522%253A%2522npx%2522%252C%2522args%2522%253A%255B%2522vale-mcp%2540latest%2522%255D%257D) [<img alt="Install in VS Code Insiders" src="https://img.shields.io/badge/VS_Code_Insiders-VS_Code_Insiders?style=flat-square&label=Install%20Server&color=24bfa5">](https://insiders.vscode.dev/redirect?url=vscode-insiders%3Amcp%2Finstall%3F%257B%2522name%2522%253A%2522vale%2522%252C%2522command%2522%253A%2522npx%2522%252C%2522args%2522%253A%255B%2522vale-mcp%2540latest%2522%255D%257D)
+
+You can also add the Vale MCP server to VS Code manually:
 
 #### Option A: Command Palette (easiest)
 
@@ -161,7 +161,9 @@ Add to your VS Code settings file:
 
 ### Cursor
 
-Add to your Cursor MCP settings (follow [Cursor's MCP documentation](https://docs.cursor.com/advanced/model-context-protocol)):
+[<img src="https://cursor.com/deeplink/mcp-install-dark.svg" alt="Install in Cursor">](https://cursor.com/install-mcp?name=Vale&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyJ2YWxlLW1jcEBsYXRlc3QiXX0=)
+
+You can also add the Vale MCP server manually (follow [Cursor's MCP documentation](https://docs.cursor.com/advanced/model-context-protocol)):
 
 **Using global install:**
 
@@ -408,4 +410,4 @@ Created by @chrischinchilla and @theletterf
 
 ## License
 
-MIT License - see LICENSE file for details.
+MIT License. Refer to the LICENSE file for details.
