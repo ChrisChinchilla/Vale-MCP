@@ -93,9 +93,7 @@ Restart Claude Desktop after updating the configuration.
 
 ### VS Code (GitHub Copilot)
 
-[<img src="https://img.shields.io/badge/VS_Code-VS_Code?style=flat-square&label=Install%20Server&color=0098FF" alt="Install in VS Code">](https://insiders.vscode.dev/redirect?url=vscode%3Amcp%2Finstall%3F%257B%2522name%2522%253A%2522vale%2522%252C%2522command%2522%253A%2522npx%2522%252C%2522args%2522%253A%255B%2522vale-mcp%2540latest%2522%255D%257D) [<img alt="Install in VS Code Insiders" src="https://img.shields.io/badge/VS_Code_Insiders-VS_Code_Insiders?style=flat-square&label=Install%20Server&color=24bfa5">](https://insiders.vscode.dev/redirect?url=vscode-insiders%3Amcp%2Finstall%3F%257B%2522name%2522%253A%2522vale%2522%252C%2522command%2522%253A%2522npx%2522%252C%2522args%2522%253A%255B%2522vale-mcp%2540latest%2522%255D%257D)
-
-You can also add the Vale MCP server to VS Code manually:
+You can add the Vale MCP server to VS Code in two ways:
 
 #### Option A: Command Palette (easiest)
 
@@ -161,9 +159,7 @@ Add to your VS Code settings file:
 
 ### Cursor
 
-[<img src="https://cursor.com/deeplink/mcp-install-dark.svg" alt="Install in Cursor">](https://cursor.com/install-mcp?name=Vale&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyJ2YWxlLW1jcEBsYXRlc3QiXX0=)
-
-You can also add the Vale MCP server manually (follow [Cursor's MCP documentation](https://docs.cursor.com/advanced/model-context-protocol)):
+Add to your Cursor MCP settings (follow [Cursor's MCP documentation](https://docs.cursor.com/advanced/model-context-protocol)):
 
 **Using global install:**
 
