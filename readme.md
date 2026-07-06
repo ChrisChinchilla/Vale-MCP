@@ -42,7 +42,7 @@ This is the recommended approach for most users and is what the quick install ba
 Install the `vale-mcp` package globally to create a system-wide `vale-cli` command:
 
 ```bash
-npm install -g vale-mcp
+npm i @iflow-mcp/chrischinchilla-vale-mcp
 ```
 
 To uninstall:
