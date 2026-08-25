@@ -38,10 +38,11 @@
     "url": "https://github.com/chrischinchilla/vale-mcp.git"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.17.2"
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@types/node": "^24.2.0",
-    "typescript": "^5.9.2"
+    "@types/node": "^24.13.3",
+    "typescript": "^5.9.3"
   }
 }

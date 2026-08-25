@@ -5,9 +5,11 @@ linting to AI coding assistants (Claude Desktop, Cursor, etc.) over stdio.
 
 ## Architecture
 
-- `src/index.ts` — MCP server entry point. Registers tools, handles CLI flags
-  (`--debug`, `--help`, `--version`), and resolves the active `.vale.ini` on
-  startup.
+- `src/index.ts` — MCP server entry point, built on the high-level `McpServer`
+  API (`registerTool`, zod input/output schemas — not the low-level `Server`
+  class, which the SDK now marks `@deprecated` for anything but advanced use
+  cases). Handles CLI flags (`--debug`, `--help`, `--version`) and resolves
+  the active `.vale.ini` on startup.
 - `src/vale-runner.ts` — shell wrapper around the `vale` binary: install
   detection, `check_file`, `check_text`, `vale sync`.
 - `src/config.ts` — config discovery/loading (`VALE_CONFIG_PATH` env var,
