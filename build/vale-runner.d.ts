@@ -27,5 +27,5 @@ export declare function checkFile(filePath: string, configPath?: string): Promis
 /**
  * Runs Vale on text passed directly (via stdin)
  */
-export declare function checkText(text: string, configPath?: string): Promise<CheckFileResult>;
+export declare function checkText(text: string, textFileExt?: string, configPath?: string): Promise<CheckFileResult>;
 //# sourceMappingURL=vale-runner.d.ts.map

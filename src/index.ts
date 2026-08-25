@@ -92,7 +92,11 @@ function getInstallationInstructions(): {
   documentation: string;
 } {
   const platform = process.platform;
-  const instructions: any = {
+  const instructions: {
+    platform: string;
+    methods: Array<{ name: string; command: string; url?: string }>;
+    documentation: string;
+  } = {
     platform,
     documentation: "https://vale.sh/docs/vale-cli/installation/",
     methods: [],
@@ -358,14 +362,20 @@ server.registerTool(
       "Lint a file at a specific path against Vale style rules. Returns issues found with their locations and severity. If Vale is not installed, returns error with installation guidance.",
     inputSchema: {
       path: z.string().describe("Absolute or relative path to the file to check"),
+      config_path: z
+        .string()
+        .optional()
+        .describe(
+          "Optional path to .vale.ini file. If not provided, Vale will search for .vale.ini starting from the file's directory and moving upward through parent directories."
+        ),
     },
     annotations: {
       readOnlyHint: true,
       openWorldHint: false,
     },
   },
-  async ({ path: filePath }) => {
-    debug(`check_file called - path: ${filePath}`);
+  async ({ path: filePath, config_path }) => {
+    debug(`check_file called - path: ${filePath}, config_path: ${config_path}`);
 
     const valeCheck = await checkValeInstalled();
     if (!valeCheck.installed) {
@@ -373,7 +383,9 @@ server.registerTool(
     }
 
     try {
-      const result = await checkFile(filePath, valeConfigPath);
+      // Only pass config_path if explicitly provided by the user
+      // This allows Vale to use its natural upward search from the file's directory
+      const result = await checkFile(filePath, config_path);
 
       debug(`check_file result - file: ${result.file}, issues found: ${result.issues.length}, errors: ${result.summary.errors}, warnings: ${result.summary.warnings}, suggestions: ${result.summary.suggestions}`);
 
@@ -403,14 +415,26 @@ server.registerTool(
       "Lint text content directly against Vale style rules without requiring a file. Useful for checking text snippets, clipboard content, or dynamically generated content. Returns issues found with their locations and severity.",
     inputSchema: {
       text: z.string().describe("The text content to check with Vale"),
+      text_file_ext: z
+        .string()
+        .optional()
+        .describe(
+          "Optional file extension for Vale to apply when checking the text (e.g., '.md', '.txt'). This can help Vale apply file format-specific rules if needed."
+        ),
+      config_path: z
+        .string()
+        .optional()
+        .describe(
+          "Optional path to .vale.ini file. If not provided, uses the server's configured path or searches in the current directory."
+        ),
     },
     annotations: {
       readOnlyHint: true,
       openWorldHint: false,
     },
   },
-  async ({ text }) => {
-    debug(`check_text called - text length: ${text?.length}`);
+  async ({ text, text_file_ext, config_path }) => {
+    debug(`check_text called - text length: ${text?.length}, text_file_ext: ${text_file_ext}, config_path: ${config_path}`);
 
     const valeCheck = await checkValeInstalled();
     if (!valeCheck.installed) {
@@ -418,7 +442,10 @@ server.registerTool(
     }
 
     try {
-      const result = await checkText(text, valeConfigPath);
+      // Use the provided config_path if given, otherwise fall back to the
+      // server's configured path since there's no file directory to search from
+      const effectiveConfigPath = config_path !== undefined ? config_path : valeConfigPath;
+      const result = await checkText(text, text_file_ext, effectiveConfigPath);
 
       debug(`check_text result - issues found: ${result.issues.length}, errors: ${result.summary.errors}, warnings: ${result.summary.warnings}, suggestions: ${result.summary.suggestions}`);
 

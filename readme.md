@@ -6,6 +6,10 @@ A [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server that i
 
 This MCP server provides AI assistants with the ability to check files for style and grammar issues using Vale's powerful linting engine. It automatically discovers Vale configuration files and provides formatted, actionable feedback about writing quality.
 
+## Quick install
+
+[<img src="https://img.shields.io/badge/VS_Code-VS_Code?style=flat-square&label=Install%20Server&color=0098FF" alt="Install in VS Code">](https://insiders.vscode.dev/redirect?url=vscode%3Amcp%2Finstall%3F%257B%2522name%2522%253A%2522vale%2522%252C%2522command%2522%253A%2522npx%2522%252C%2522args%2522%253A%255B%2522vale-mcp%2540latest%2522%255D%257D) [<img alt="Install in VS Code Insiders" src="https://img.shields.io/badge/VS_Code_Insiders-VS_Code_Insiders?style=flat-square&label=Install%20Server&color=24bfa5">](https://insiders.vscode.dev/redirect?url=vscode-insiders%3Amcp%2Finstall%3F%257B%2522name%2522%253A%2522vale%2522%252C%2522command%2522%253A%2522npx%2522%252C%2522args%2522%253A%255B%2522vale-mcp%2540latest%2522%255D%257D) [<img src="https://cursor.com/deeplink/mcp-install-dark.svg" alt="Install in Cursor">](https://cursor.com/install-mcp?name=Vale&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyJ2YWxlLW1jcEBsYXRlc3QiXX0=)
+
 ## Features
 
 - ✅ File linting: Check any text file for style issues with Vale
@@ -23,6 +27,30 @@ This MCP server provides AI assistants with the ability to check files for style
 
 ## Installation
 
+### Using npx (no install required)
+
+You can run Vale MCP directly using `npx` without installing it globally:
+
+```bash
+npx vale-mcp@latest
+```
+
+This is the recommended approach for most users and is what the quick install badges above use.
+
+### Global install via npm
+
+Install the `vale-mcp` package globally to create a system-wide `vale-cli` command:
+
+```bash
+npm install -g vale-mcp
+```
+
+To uninstall:
+
+```bash
+npm uninstall -g vale-mcp
+```
+
 ### Build from source
 
 ```bash
@@ -34,14 +62,8 @@ npm install
 
 # Build the TypeScript project
 npm run build
-```
 
-### Install globally (recommended for most users)
-
-Installing globally creates a `vale-cli` command available system-wide:
-
-```bash
-# From the Vale-MCP directory
+# Install globally (creates a system-wide vale-cli command)
 npm run install:global
 ```
 
@@ -71,6 +93,19 @@ Add the Vale MCP server to your Claude Desktop configuration file:
 {
   "mcpServers": {
     "vale": {
+      "command": "npx",
+      "args": ["vale-mcp@latest"]
+    }
+  }
+}
+```
+
+**Using global install:**
+
+```json
+{
+  "mcpServers": {
+    "vale": {
       "command": "vale-cli",
       "args": []
     }
@@ -84,8 +119,8 @@ For debug mode:
 {
   "mcpServers": {
     "vale": {
-      "command": "vale-cli",
-      "args": ["--debug"]
+      "command": "npx",
+      "args": ["vale-mcp@latest", "--debug"]
     }
   }
 }
@@ -95,7 +130,9 @@ Restart Claude Desktop after updating the configuration.
 
 ### VS Code (GitHub Copilot)
 
-You can add the Vale MCP server to VS Code in two ways:
+[<img src="https://img.shields.io/badge/VS_Code-VS_Code?style=flat-square&label=Install%20Server&color=0098FF" alt="Install in VS Code">](https://insiders.vscode.dev/redirect?url=vscode%3Amcp%2Finstall%3F%257B%2522name%2522%253A%2522vale%2522%252C%2522command%2522%253A%2522npx%2522%252C%2522args%2522%253A%255B%2522vale-mcp%2540latest%2522%255D%257D) [<img alt="Install in VS Code Insiders" src="https://img.shields.io/badge/VS_Code_Insiders-VS_Code_Insiders?style=flat-square&label=Install%20Server&color=24bfa5">](https://insiders.vscode.dev/redirect?url=vscode-insiders%3Amcp%2Finstall%3F%257B%2522name%2522%253A%2522vale%2522%252C%2522command%2522%253A%2522npx%2522%252C%2522args%2522%253A%255B%2522vale-mcp%2540latest%2522%255D%257D)
+
+You can also add the Vale MCP server to VS Code manually:
 
 #### Option A: Command Palette (easiest)
 
@@ -104,8 +141,9 @@ You can add the Vale MCP server to VS Code in two ways:
 3. Provide server information:
    - **Name:** `vale` (or any name you prefer)
    - **Type:** Select `stdio`
-   - **Command:** `vale-cli` (if installed globally) or `node`
+   - **Command:** `npx` (recommended, no install needed), `vale-cli` (if installed globally), or `node`
    - **Arguments:**
+     - If using `npx`: Add `vale-mcp@latest`
      - If using `vale-cli`: Leave empty or add `--debug`
      - If using `node`: Add the path like `/Users/fabri/repos/FrankenMCP/Vale-MCP/build/index.js`
 4. Choose scope: User configuration (global) or Workspace (project-specific)
@@ -113,6 +151,19 @@ You can add the Vale MCP server to VS Code in two ways:
 #### Option B: Manual configuration
 
 Add to your VS Code settings file:
+
+**Using npx (no install needed):**
+
+```json
+{
+  "github.copilot.chat.mcp.servers": {
+    "vale": {
+      "command": "npx",
+      "args": ["vale-mcp@latest"]
+    }
+  }
+}
+```
 
 **Using global install:**
 
@@ -146,8 +197,8 @@ Add to your VS Code settings file:
 {
   "github.copilot.chat.mcp.servers": {
     "vale": {
-      "command": "vale-cli",
-      "args": ["--debug"]
+      "command": "npx",
+      "args": ["vale-mcp@latest", "--debug"]
     }
   }
 }
@@ -161,7 +212,22 @@ Add to your VS Code settings file:
 
 ### Cursor
 
-Add to your Cursor MCP settings (follow [Cursor's MCP documentation](https://docs.cursor.com/advanced/model-context-protocol)):
+[<img src="https://cursor.com/deeplink/mcp-install-dark.svg" alt="Install in Cursor">](https://cursor.com/install-mcp?name=Vale&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyJ2YWxlLW1jcEBsYXRlc3QiXX0=)
+
+You can also add the Vale MCP server manually (follow [Cursor's MCP documentation](https://docs.cursor.com/advanced/model-context-protocol)):
+
+**Using npx (no install needed):**
+
+```json
+{
+  "mcpServers": {
+    "vale": {
+      "command": "npx",
+      "args": ["vale-mcp@latest"]
+    }
+  }
+}
+```
 
 **Using global install:**
 
@@ -196,7 +262,8 @@ You can specify a Vale configuration file using the `VALE_CONFIG_PATH` environme
 {
   "mcpServers": {
     "vale": {
-      "command": "vale-cli",
+      "command": "npx",
+      "args": ["vale-mcp@latest"],
       "env": {
         "VALE_CONFIG_PATH": "/path/to/your/.vale.ini"
       }
@@ -217,7 +284,7 @@ Once configured, you can ask your AI assistant to:
 
 ## Available tools
 
-The server provides three MCP tools:
+The server provides four MCP tools:
 
 ### `vale_status`
 
@@ -275,6 +342,29 @@ Lint a file at a specific path against Vale style rules.
 **Example usage in AI:**
 
 > "Check the README.md file for style issues"
+
+### `check_text`
+
+Lint AI-generated text against Vale style rules before it's written to a file or artifact.
+
+**Parameters:**
+
+- `text` (required): The text content to check with Vale
+- `text_file_ext` (optional): The file extension to apply to the text.
+    Used as the value to Vale's `--ext` argument.
+    If not specified, the `--ext` argument is not used.
+    The format for this value is an optional leading dot followed by letters and digits,
+    such as: "md", ".md", "txt", ".txt", or "docx"
+- `config_path` (optional): The path to the config file to use.
+    If not specified, the server's configured path is used.
+
+**Returns:**
+
+- A JSON object containing Vale's evaluation results.
+
+**Example usage in AI:**
+
+> "Check this text for style issues"
 
 ## Command-line options
 
@@ -408,4 +498,4 @@ Created by @chrischinchilla and @theletterf
 
 ## License
 
-MIT License - see LICENSE file for details.
+MIT License. Refer to the LICENSE file for details.

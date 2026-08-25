@@ -298,7 +298,7 @@ export async function checkFile(
   command += ` "${absolutePath}"`;
 
   // Run Vale from the file's directory so it searches upward from there
-  const execOptions: any = {
+  const execOptions: ExecOptions = {
     encoding: 'utf-8',
     cwd: path.dirname(absolutePath)
   };
@@ -308,13 +308,14 @@ export async function checkFile(
   try {
     const result = await execAsync(command, execOptions);
     stdout = typeof result.stdout === 'string' ? result.stdout : result.stdout.toString('utf-8');
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Vale returns non-zero exit code when there are issues
     // But it still outputs JSON to stdout
-    if (error.stdout) {
-      stdout = error.stdout;
+    const execError = error as { stdout?: string; stderr?: string; message?: string };
+    if (execError.stdout) {
+      stdout = execError.stdout;
     } else {
-      const errorMessage = error.stderr || error.message || "Unknown error";
+      const errorMessage = execError.stderr || execError.message || "Unknown error";
       throw new Error(
         `Vale execution failed: ${errorMessage}`
       );
@@ -340,18 +341,42 @@ export async function checkFile(
  */
 export async function checkText(
   text: string,
+  textFileExt?: string,
   configPath?: string
 ): Promise<CheckFileResult> {
-  // Build Vale command - just pass text via stdin
-  let command = `vale --output=JSON`;
-
+  // Check to see of any text was sent
+  if (!text || text.trim() === "") {
+    throw new Error(`No text found to check. Make sure the text has content that is not only whitespace.`);
+  }
+  // Now build the Vale command, starting with the command and adding arguments based on the parameters
+  let command = `vale`;
+  if (textFileExt) {
+    // Clean the provided file extension and
+    //  confirm it's in a valid format,
+    //  such as: "md", ".md", "txt", ".txt", or "docx"
+    let normalizedExt: string | undefined;
+    const trimmedExt = textFileExt.trim();
+    const extPattern = /^\.?[a-zA-Z0-9]+$/;
+    if (extPattern.test(trimmedExt)) {
+      // If a file extension is provided, we can use Vale's --ext flag to help it apply the correct rules
+      normalizedExt = trimmedExt.startsWith(".") ? trimmedExt : `.${trimmedExt}`;
+      command += ` --ext="${normalizedExt}"`;
+      console.error(`Using file extension for Vale: ${normalizedExt}`);
+    } else {
+      // If the provided extension is not valid, throw an exception
+      throw new Error(`Vale doesn't allow a text file extension of: "${textFileExt}". Allowed format is an optional leading dot followed by letters and digits.`
+      );
+    }
+  }
   if (configPath) {
     command += ` --config="${configPath}"`;
     console.error(`Using explicit config: ${configPath}`);
   } else {
     console.error(`Using Vale defaults or searching for config from current directory`);
   }
-
+  // add output argument to command
+  command += ` --output=JSON`;
+  
   // Execute Vale with text as stdin
   const execOptions: ExecOptions = {
     encoding: 'utf-8',
@@ -379,8 +404,9 @@ export async function checkText(
     });
 
     stdout = result.stdout;
-  } catch (error: any) {
-    const errorMessage = error.stderr || error.message || "Unknown error";
+  } catch (error: unknown) {
+    const execError = error as { stderr?: string; message?: string };
+    const errorMessage = execError.stderr || execError.message || "Unknown error";
     throw new Error(
       `Vale execution failed: ${errorMessage}`
     );
