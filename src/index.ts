@@ -1,12 +1,9 @@
 #!/usr/bin/env node
 
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import {
-  CallToolRequestSchema,
-  ListToolsRequestSchema,
-  Tool,
-} from "@modelcontextprotocol/sdk/types.js";
+import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { z } from "zod";
 import { checkValeInstalled, checkFile, checkText, syncValeStyles } from "./vale-runner.js";
 import {
   loadConfig,
@@ -165,8 +162,9 @@ function getInstallationInstructions(): {
 /**
  * Helper function to generate "Vale not installed" error response
  */
-function createValeNotInstalledResponse() {
+function createValeNotInstalledResponse(): CallToolResult {
   return {
+    isError: true,
     content: [
       {
         type: "text",
@@ -189,305 +187,21 @@ function isStylesDirectoryError(errorMessage: string): boolean {
   return /E100|does not exist|Runtime error/i.test(errorMessage);
 }
 
-// Initialize the MCP server
-const server = new Server(
-  {
-    name: "vale-mcp",
-    version: VERSION,
-  },
-  {
-    capabilities: {
-      tools: {},
-    },
-  }
-);
+/**
+ * Builds the CallToolResult for a caught linting error, with dedicated
+ * guidance when it looks like Vale's styles directory hasn't been synced.
+ */
+function handleValeLintError(error: unknown): CallToolResult {
+  const errorMessage = error instanceof Error ? error.message : "Unknown error";
+  const errorDetails = error instanceof Error ? error.stack : "No details available";
 
-// Define the available tools
-const TOOLS: Tool[] = [
-  {
-    name: "vale_status",
-    description:
-      "Check if Vale (vale.sh) is installed and accessible. Use this first if other Vale tools fail. Returns installation status, version if available, and installation instructions for the current platform.",
-    inputSchema: {
-      type: "object",
-      properties: {},
-    },
-  },
-  {
-    name: "vale_sync",
-    description:
-      "Download Vale styles and packages by running 'vale sync'. Use this when you see errors about missing styles directories (E100 errors like 'The path does not exist'). This command reads the .vale.ini configuration and downloads the required style packages.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        config_path: {
-          type: "string",
-          description: "Optional path to .vale.ini file. If not provided, uses the server's configured path or searches in the current directory.",
-        },
-      },
-    },
-  },
-  {
-    name: "check_file",
-    description:
-      "Lint a file at a specific path against Vale style rules. Returns issues found with their locations and severity. If Vale is not installed, returns error with installation guidance.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        path: {
-          type: "string",
-          description: "Absolute or relative path to the file to check",
-        },
-        config_path: {
-          type: "string",
-          description: "Optional path to .vale.ini file. If not provided, Vale will search for .vale.ini starting from the file's directory and moving upward through parent directories.",
-        },
-      },
-      required: ["path"],
-    },
-  },
-  {
-    name: "check_text",
-    description:
-      "Lint text content directly against Vale style rules without requiring a file. Useful for checking text snippets, clipboard content, or dynamically generated content. Returns issues found with their locations and severity.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        text: {
-          type: "string",
-          description: "The text content to check with Vale",
-        },
-        text_file_ext: {
-          type: "string",
-          description: "Optional file extension for Vale to apply when checking the text (e.g., '.md', '.txt'). This can help Vale apply file format-specific rules if needed.",
-        },
-        config_path: {
-          type: "string",
-          description: "Optional path to .vale.ini file. If not provided, uses the server's configured path or searches in the current directory.",
-        },
-      },
-      required: ["text"],
-    },
-  },
-];
-
-// Handler for listing available tools
-server.setRequestHandler(ListToolsRequestSchema, async () => {
-  return {
-    tools: TOOLS,
-  };
-});
-
-// Handler for tool execution
-server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  const { name, arguments: args } = request.params;
-
-  debug(`Tool called: ${name}`, JSON.stringify(args, null, 2));
-
-  try {
-    switch (name) {
-      case "vale_status": {
-        debug("Checking Vale installation status...");
-        const valeCheck = await checkValeInstalled();
-        debug(`Vale installed: ${valeCheck.installed}, version: ${valeCheck.version}`);
-        
-        return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify({
-                installed: valeCheck.installed,
-                version: valeCheck.version,
-                platform: process.platform,
-                installation_instructions: valeCheck.installed 
-                  ? null 
-                  : getInstallationInstructions(),
-                message: valeCheck.installed
-                  ? `Vale is installed and ready to use (${valeCheck.version})`
-                  : "Vale is not installed. Please install it to use Vale linting tools.",
-              }, null, 2),
-            },
-          ],
-        };
-      }
-
-      case "vale_sync": {
-        const { config_path } = args as { config_path?: string };
-
-        debug(`vale_sync called - config_path: ${config_path}`);
-
-        // Check if Vale is available
-        const valeCheck = await checkValeInstalled();
-        if (!valeCheck.installed) {
-          return createValeNotInstalledResponse();
-        }
-
-        // Determine which config to use
-        const effectiveConfigPath = config_path || valeConfigPath;
-
-        // Run vale sync
-        const syncResult = await syncValeStyles(effectiveConfigPath);
-
-        debug(`vale_sync result - success: ${syncResult.success}`);
-
-        if (syncResult.success) {
-          return {
-            content: [
-              {
-                type: "text",
-                text: `✅ **Vale sync successful**
-
-${syncResult.message}
-
-${syncResult.output ? `**Output:**\n\`\`\`\n${syncResult.output}\n\`\`\`` : ""}
-
-The styles have been downloaded and are ready to use. You can now run \`check_file\` again.`,
-              },
-            ],
-          };
-        } else {
-          return {
-            content: [
-              {
-                type: "text",
-                text: `❌ **Vale sync failed**
-
-${syncResult.message}
-
-${syncResult.error ? `**Error:**\n\`\`\`\n${syncResult.error}\n\`\`\`` : ""}
-
-Please check your .vale.ini configuration and ensure:
-1. The StylesPath is correct
-2. Packages are properly defined
-3. You have internet connectivity to download packages
-
-See Vale documentation: https://vale.sh/docs/topics/packages/`,
-              },
-            ],
-          };
-        }
-      }
-
-      case "check_file": {
-        const { path: filePath, config_path } = args as { path: string; config_path?: string };
-
-        debug(`check_file called - path: ${filePath}, config_path: ${config_path}`);
-
-        if (!filePath) {
-          return {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify({
-                  error: "Missing required parameter: path",
-                }),
-              },
-            ],
-          };
-        }
-
-        // Check if Vale is available
-        const valeCheck = await checkValeInstalled();
-        if (!valeCheck.installed) {
-          return createValeNotInstalledResponse();
-        }
-
-        // Only pass config_path if explicitly provided by the user
-        // This allows Vale to use its natural upward search from the file's directory
-        const result = await checkFile(filePath, config_path);
-
-        debug(`check_file result - file: ${result.file}, issues found: ${result.issues.length}, errors: ${result.summary.errors}, warnings: ${result.summary.warnings}, suggestions: ${result.summary.suggestions}`);
-
-        return {
-          content: [
-            {
-              type: "text",
-              text: result.formatted,
-            },
-          ],
-          _meta: {
-            structured_data: {
-              file: result.file,
-              issues: result.issues,
-              summary: result.summary,
-            },
-          },
-        };
-      }
-
-      case "check_text": {
-        const { text, text_file_ext, config_path } = args as { text: string; text_file_ext?: string; config_path?: string };
-
-        debug(`check_text called - text length: ${text?.length}, text_file_ext: ${text_file_ext}, config_path: ${config_path}`);
-
-        if (!text) {
-          return {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify({
-                  error: "Missing required parameter: text",
-                }),
-              },
-            ],
-          };
-        }
-
-        // Check if Vale is available
-        const valeCheck = await checkValeInstalled();
-        if (!valeCheck.installed) {
-          return createValeNotInstalledResponse();
-        }
-
-        // For check_text, we should use the provided config_path if given,
-        // otherwise fall back to the server's configured path since there's no file directory to search from
-        const effectiveConfigPath = config_path !== undefined ? config_path : valeConfigPath;
-
-        const result = await checkText(text, text_file_ext, effectiveConfigPath);
-
-        debug(`check_text result - issues found: ${result.issues.length}, errors: ${result.summary.errors}, warnings: ${result.summary.warnings}, suggestions: ${result.summary.suggestions}`);
-
-        return {
-          content: [
-            {
-              type: "text",
-              text: result.formatted,
-            },
-          ],
-          _meta: {
-            structured_data: {
-              file: result.file,
-              issues: result.issues,
-              summary: result.summary,
-            },
-          },
-        };
-      }
-
-      default:
-        debug(`Unknown tool called: ${name}`);
-        return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify({
-                error: `Unknown tool: ${name}`,
-              }),
-            },
-          ],
-        };
-    }
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    const errorDetails = error instanceof Error ? error.stack : "No details available";
-    
-    // Check if this is an E100 error about missing styles
-    if (isStylesDirectoryError(errorMessage)) {
-      return {
-        content: [
-          {
-            type: "text",
-            text: `❌ **Vale configuration error**
+  if (isStylesDirectoryError(errorMessage)) {
+    return {
+      isError: true,
+      content: [
+        {
+          type: "text",
+          text: `❌ **Vale configuration error**
 
 ${errorMessage}
 
@@ -508,24 +222,251 @@ This will:
 After running \`vale_sync\`, you can try \`check_file\` again.
 
 For more information, see: https://vale.sh/docs/topics/packages/`,
-          },
-        ],
-      };
-    }
-    
+        },
+      ],
+    };
+  }
+
+  return {
+    isError: true,
+    content: [
+      {
+        type: "text",
+        text: JSON.stringify({
+          error: errorMessage,
+          details: errorDetails,
+        }),
+      },
+    ],
+  };
+}
+
+// Initialize the MCP server
+const server = new McpServer({
+  name: "vale-mcp",
+  version: VERSION,
+});
+
+server.registerTool(
+  "vale_status",
+  {
+    description:
+      "Check if Vale (vale.sh) is installed and accessible. Use this first if other Vale tools fail. Returns installation status, version if available, and installation instructions for the current platform.",
+    annotations: {
+      readOnlyHint: true,
+      openWorldHint: false,
+    },
+  },
+  async () => {
+    debug("Checking Vale installation status...");
+    const valeCheck = await checkValeInstalled();
+    debug(`Vale installed: ${valeCheck.installed}, version: ${valeCheck.version}`);
+
     return {
       content: [
         {
           type: "text",
           text: JSON.stringify({
-            error: errorMessage,
-            details: errorDetails,
-          }),
+            installed: valeCheck.installed,
+            version: valeCheck.version,
+            platform: process.platform,
+            installation_instructions: valeCheck.installed
+              ? null
+              : getInstallationInstructions(),
+            message: valeCheck.installed
+              ? `Vale is installed and ready to use (${valeCheck.version})`
+              : "Vale is not installed. Please install it to use Vale linting tools.",
+          }, null, 2),
         },
       ],
     };
   }
-});
+);
+
+server.registerTool(
+  "vale_sync",
+  {
+    description:
+      "Download Vale styles and packages by running 'vale sync'. Use this when you see errors about missing styles directories (E100 errors like 'The path does not exist'). This command reads the .vale.ini configuration and downloads the required style packages.",
+    inputSchema: {
+      config_path: z
+        .string()
+        .optional()
+        .describe(
+          "Optional path to .vale.ini file. If not provided, uses the server's configured path or searches in the current directory."
+        ),
+    },
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      openWorldHint: true,
+    },
+  },
+  async ({ config_path }) => {
+    debug(`vale_sync called - config_path: ${config_path}`);
+
+    const valeCheck = await checkValeInstalled();
+    if (!valeCheck.installed) {
+      return createValeNotInstalledResponse();
+    }
+
+    const effectiveConfigPath = config_path || valeConfigPath;
+    const syncResult = await syncValeStyles(effectiveConfigPath);
+
+    debug(`vale_sync result - success: ${syncResult.success}`);
+
+    if (syncResult.success) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `✅ **Vale sync successful**
+
+${syncResult.message}
+
+${syncResult.output ? `**Output:**\n\`\`\`\n${syncResult.output}\n\`\`\`` : ""}
+
+The styles have been downloaded and are ready to use. You can now run \`check_file\` again.`,
+          },
+        ],
+      };
+    }
+
+    return {
+      isError: true,
+      content: [
+        {
+          type: "text",
+          text: `❌ **Vale sync failed**
+
+${syncResult.message}
+
+${syncResult.error ? `**Error:**\n\`\`\`\n${syncResult.error}\n\`\`\`` : ""}
+
+Please check your .vale.ini configuration and ensure:
+1. The StylesPath is correct
+2. Packages are properly defined
+3. You have internet connectivity to download packages
+
+See Vale documentation: https://vale.sh/docs/topics/packages/`,
+        },
+      ],
+    };
+  }
+);
+
+server.registerTool(
+  "check_file",
+  {
+    description:
+      "Lint a file at a specific path against Vale style rules. Returns issues found with their locations and severity. If Vale is not installed, returns error with installation guidance.",
+    inputSchema: {
+      path: z.string().describe("Absolute or relative path to the file to check"),
+      config_path: z
+        .string()
+        .optional()
+        .describe(
+          "Optional path to .vale.ini file. If not provided, Vale will search for .vale.ini starting from the file's directory and moving upward through parent directories."
+        ),
+    },
+    annotations: {
+      readOnlyHint: true,
+      openWorldHint: false,
+    },
+  },
+  async ({ path: filePath, config_path }) => {
+    debug(`check_file called - path: ${filePath}, config_path: ${config_path}`);
+
+    const valeCheck = await checkValeInstalled();
+    if (!valeCheck.installed) {
+      return createValeNotInstalledResponse();
+    }
+
+    try {
+      // Only pass config_path if explicitly provided by the user
+      // This allows Vale to use its natural upward search from the file's directory
+      const result = await checkFile(filePath, config_path);
+
+      debug(`check_file result - file: ${result.file}, issues found: ${result.issues.length}, errors: ${result.summary.errors}, warnings: ${result.summary.warnings}, suggestions: ${result.summary.suggestions}`);
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: result.formatted,
+          },
+        ],
+        structuredContent: {
+          file: result.file,
+          issues: result.issues,
+          summary: result.summary,
+        },
+      };
+    } catch (error) {
+      return handleValeLintError(error);
+    }
+  }
+);
+
+server.registerTool(
+  "check_text",
+  {
+    description:
+      "Lint text content directly against Vale style rules without requiring a file. Useful for checking text snippets, clipboard content, or dynamically generated content. Returns issues found with their locations and severity.",
+    inputSchema: {
+      text: z.string().describe("The text content to check with Vale"),
+      text_file_ext: z
+        .string()
+        .optional()
+        .describe(
+          "Optional file extension for Vale to apply when checking the text (e.g., '.md', '.txt'). This can help Vale apply file format-specific rules if needed."
+        ),
+      config_path: z
+        .string()
+        .optional()
+        .describe(
+          "Optional path to .vale.ini file. If not provided, uses the server's configured path or searches in the current directory."
+        ),
+    },
+    annotations: {
+      readOnlyHint: true,
+      openWorldHint: false,
+    },
+  },
+  async ({ text, text_file_ext, config_path }) => {
+    debug(`check_text called - text length: ${text?.length}, text_file_ext: ${text_file_ext}, config_path: ${config_path}`);
+
+    const valeCheck = await checkValeInstalled();
+    if (!valeCheck.installed) {
+      return createValeNotInstalledResponse();
+    }
+
+    try {
+      // Use the provided config_path if given, otherwise fall back to the
+      // server's configured path since there's no file directory to search from
+      const effectiveConfigPath = config_path !== undefined ? config_path : valeConfigPath;
+      const result = await checkText(text, text_file_ext, effectiveConfigPath);
+
+      debug(`check_text result - issues found: ${result.issues.length}, errors: ${result.summary.errors}, warnings: ${result.summary.warnings}, suggestions: ${result.summary.suggestions}`);
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: result.formatted,
+          },
+        ],
+        structuredContent: {
+          file: result.file,
+          issues: result.issues,
+          summary: result.summary,
+        },
+      };
+    } catch (error) {
+      return handleValeLintError(error);
+    }
+  }
+);
 
 /**
  * Initialize Vale configuration
@@ -604,11 +545,11 @@ async function main() {
     const padding = ' '.repeat(Math.floor((boxWidth - title.length - 2) / 2));
     const titleLine = `║${padding}${title}${padding}${title.length % 2 === 0 ? ' ' : ''}║`;
     const border = '═'.repeat(boxWidth - 2);
-    
+
     console.error(`\n╔${border}╗`);
     console.error(titleLine);
     console.error(`╚${border}╝\n`);
-    
+
     if (DEBUG) {
       console.error("🐛 Debug mode enabled\n");
     }
