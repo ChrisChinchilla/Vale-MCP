@@ -14,7 +14,7 @@
     "install:global": "npm link",
     "uninstall:global": "npm unlink -g vale-mcp",
     "prepublishOnly": "npm run build",
-    "test": "npm run build && node --test test/"
+    "test": "npm run build && node --test \"test/*.test.mjs\""
   },
   "files": [
     "build",
