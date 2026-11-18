@@ -6,8 +6,11 @@ description: Cut a release of vale-mcp. Bumps the version, finalizes CHANGELOG, 
 # Release vale-mcp
 
 Publishing is automated: creating a **GitHub Release** runs
-`.github/workflows/publish.yml`, which does `npm ci` + `npm publish
---provenance` using the `NPM_TOKEN` secret. Never run `npm publish` locally.
+`.github/workflows/publish.yml`, which does `npm ci` + `npm publish` using
+npm **trusted publishing** (OIDC; no token or secret). The package's npm
+settings must list a trusted publisher: repo `ChrisChinchilla/Vale-MCP`,
+workflow `publish.yml`. Note a release-triggered workflow runs the workflow
+file *as of the tag*, so workflow fixes need a new tag, not just a re-run. Never run `npm publish` locally.
 The release PR itself changes nothing outward-facing; creating the GitHub
 Release does, so only do that step when the user has asked for the release.
 
@@ -15,7 +18,6 @@ Release does, so only do that step when the user has asked for the release.
 
 - `git checkout main && git pull`; working tree clean (ignore untracked `.idea/`).
 - CI green on `main`: `gh run list --workflow CI --branch main --limit 1`.
-- Secret exists: `gh secret list` shows `NPM_TOKEN`.
 - Compare with what's live: `npm view vale-mcp version`.
 
 ## 2. Choose the version (semver)
@@ -63,7 +65,12 @@ If unsure, ask the user. State the chosen version and why.
 - Publish workflow fails on version mismatch: the tag and `package.json`
   differ. Delete the release and tag (`gh release delete vX.Y.Z --cleanup-tag`,
   with the user's OK), fix via a new PR, and release again.
-- `403`/`E404` on publish: `NPM_TOKEN` is missing, expired, or lacks publish
-  rights for the package. Ask the user to refresh the secret.
+- `EOTP`, `ENEEDAUTH` or `404` on publish: trusted publishing isn't matching.
+  Check the npm package Settings → Trusted Publisher (owner, repo name and
+  `publish.yml` must match exactly, case included), that the job has
+  `permissions: id-token: write`, and that `npm --version` in the log is
+  >= 11.5.1. If the workflow file had to change, the old tag still runs the
+  old workflow: cut a new patch release (or, only if nothing was published
+  and the user agrees, delete and recreate the tag).
 - "Cannot publish over existing version": the version already exists on npm;
   bump again. npm versions can't be reused.

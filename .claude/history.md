@@ -11,6 +11,20 @@ Keep entries short — a few lines, not a report.
 
 ---
 
+## 2026-11-18 — First release run failed: EOTP
+
+The v0.2.0 release was created by hand-off after the PR merged (no release
+existed at first: merging the release PR doesn't publish, creating the GitHub
+Release does). `publish.yml` ran, built and signed provenance, then `npm
+publish` failed with `EOTP`: the `NPM_TOKEN` secret requires a 2FA code,
+which CI can't supply. Resolved by moving to npm trusted publishing (OIDC): `publish.yml` no longer
+uses `NPM_TOKEN`, runs Node 24 (npm >= 11.5.1 is required), and
+`package.json` `repository.url` was corrected to the exact repo casing
+(`ChrisChinchilla/Vale-MCP`) since npm matches it against the OIDC claims.
+Gotcha: a `release`-triggered workflow runs the file as of the *tag*, so
+re-running the failed v0.2.0 run still uses the old token-based workflow.
+The `NPM_TOKEN` secret is now unused and can be deleted.
+
 ## 2026-11-18 — Release 0.2.0 and the release skill
 
 npm had only the manual 0.1.0 (pre-hardening code, still shell-injectable),
