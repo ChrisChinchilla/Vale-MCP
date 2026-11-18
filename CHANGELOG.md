@@ -1,5 +1,14 @@
 # Changelog
 
+## Version 0.2.1 - Publishing via npm trusted publishing (2026-11-18)
+
+### Changed
+
+- Releases are now published from GitHub Actions using npm trusted publishing
+  (OIDC, with provenance), replacing the manual publish used for 0.2.0. No
+  functional changes to the server.
+- `package.json` `repository.url` corrected to the exact repo casing.
+
 ## Version 0.2.0 - Security hardening and new tools (2026-11-18)
 
 ### Security
