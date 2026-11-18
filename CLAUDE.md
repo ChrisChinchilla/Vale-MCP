@@ -10,10 +10,11 @@ linting to AI coding assistants (Claude Desktop, Cursor, etc.) over stdio.
   class, which the SDK now marks `@deprecated` for anything but advanced use
   cases). Handles CLI flags (`--debug`, `--help`, `--version`) and resolves
   the active `.vale.ini` on startup.
-- `src/vale-runner.ts` — shell wrapper around the `vale` binary: install
+- `src/vale-runner.ts` — wrapper around the `vale` binary (always `execFile`,
+  never a shell string — see history): install
   detection, `check_file`, `check_text`, `vale sync`.
 - `src/config.ts` — config discovery/loading (`VALE_CONFIG_PATH` env var,
-  upward search for `.vale.ini`).
+  upward search for `.vale.ini`) and `assertPathAllowed` (`VALE_ALLOWED_ROOTS`).
 - `src/types.ts` — shared TypeScript types.
 - Build output goes to `build/` (compiled JS is committed — the `bin` entry
   point `vale-cli` points at `build/index.js`).
@@ -42,7 +43,8 @@ npm start                # run build/index.js
 npm run install:global  # npm link, exposes `vale-cli` globally
 ```
 
-No test suite currently exists.
+`npm test` builds and runs `test/*.test.mjs` against `build/` (needs `vale` on
+PATH). CI also fails if `build/` differs from a fresh build.
 
 ## Conventions
 

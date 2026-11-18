@@ -1,5 +1,26 @@
 # Changelog
 
+## Unreleased
+
+### Security
+
+- **Fixed shell injection:** Vale is now run with `execFile` and an argument
+  array instead of `exec` with an interpolated command string. Previously a
+  crafted `path`, `config_path` or `text_file_ext` could run arbitrary shell
+  commands.
+- **Updated dependencies** (`@modelcontextprotocol/sdk` 1.32.2, `zod` 4.6.7,
+  and transitive fixes); `npm audit` now reports 0 vulnerabilities.
+- **Added limits:** 60 second timeout on Vale runs (5 minutes for
+  `vale_sync`), 10 MB output cap, and 1 MB cap on `check_text` input.
+
+### Added
+
+- `VALE_ALLOWED_ROOTS` environment variable to restrict which files and
+  config paths the tools may access (symlinks are resolved).
+- Test suite (`npm test`, uses `node:test` and the installed `vale`).
+- CI workflow (tests, `npm audit`, check that `build/` matches `src/`) and
+  Dependabot config.
+
 ## Version 0.1.0 - Major refactoring and improvements
 
 ### Added

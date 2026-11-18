@@ -15,4 +15,12 @@ export declare function verifyConfigFile(configPath: string): Promise<boolean>;
  * Gets the absolute path for a config file
  */
 export declare function resolveConfigPath(configPath: string): string;
+export declare class PathNotAllowedError extends Error {
+}
+/**
+ * When VALE_ALLOWED_ROOTS is set (path-delimiter separated), rejects paths
+ * outside those directories. Symlinks are resolved first so they can't be
+ * used to escape. Unset means no restriction.
+ */
+export declare function assertPathAllowed(target: string): Promise<void>;
 //# sourceMappingURL=config.d.ts.map
