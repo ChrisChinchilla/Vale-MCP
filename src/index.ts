@@ -11,6 +11,7 @@ import {
   verifyConfigFile,
   resolveConfigPath,
   findValeIniInWorkingDir,
+  assertPathAllowed,
 } from "./config.js";
 import * as path from "path";
 import * as fs from "fs";
@@ -625,6 +626,106 @@ server.registerTool(
       return handleValeLintError(error);
     }
   }
+);
+
+server.registerResource(
+  "vale-config",
+  "vale://config",
+  {
+    title: "Active Vale configuration",
+    description:
+      "The .vale.ini the server is using (from VALE_CONFIG_PATH or the working directory), so you can see which styles and settings apply.",
+    mimeType: "text/plain",
+  },
+  async (uri) => {
+    if (!valeConfigPath) {
+      return {
+        contents: [
+          {
+            uri: uri.href,
+            mimeType: "text/plain",
+            text: "No .vale.ini was found at server start (checked VALE_CONFIG_PATH and the working directory). Vale will use its defaults or search upward from each file.",
+          },
+        ],
+      };
+    }
+    await assertPathAllowed(valeConfigPath);
+    return {
+      contents: [
+        {
+          uri: uri.href,
+          mimeType: "text/plain",
+          text: `# ${valeConfigPath}\n${await fs.promises.readFile(valeConfigPath, "utf-8")}`,
+        },
+      ],
+    };
+  }
+);
+
+const userPrompt = (text: string) => ({
+  messages: [{ role: "user" as const, content: { type: "text" as const, text } }],
+});
+
+server.registerPrompt(
+  "fix_style_issues",
+  {
+    title: "Fix style issues in a file",
+    description: "Lint a file with Vale, fix the issues, and re-check until it is clean.",
+    argsSchema: {
+      path: z.string().describe("Path to the file to fix"),
+      min_severity: z
+        .enum(["suggestion", "warning", "error"])
+        .optional()
+        .describe("Lowest severity to fix (default: warning)"),
+    },
+  },
+  ({ path: filePath, min_severity }) =>
+    userPrompt(
+      `Fix the prose style issues in ${filePath} using the Vale tools.
+
+1. Run check_file on the file with min_severity "${min_severity ?? "warning"}".
+2. Fix each issue in the file. Use an issue's suggested fix (the action field) when it has one; otherwise rewrite the text minimally and keep the meaning and voice. If you are unsure why a rule fired, use explain_rule.
+3. Run check_file again and repeat until no issues remain, or only issues you judge to be false positives. List any you left alone and why.
+4. Finish with a short summary of what changed.`
+    )
+);
+
+server.registerPrompt(
+  "review_text",
+  {
+    title: "Review text against the style guide",
+    description: "Check a piece of text with Vale and suggest an improved version.",
+    argsSchema: {
+      text: z.string().describe("The text to review"),
+      text_file_ext: z.string().optional().describe("Format of the text, e.g. .md (default: .md)"),
+    },
+  },
+  ({ text, text_file_ext }) =>
+    userPrompt(
+      `Review this text against the project's Vale style rules.
+
+Run check_text with text_file_ext "${text_file_ext ?? ".md"}", summarise the issues by severity, then give a corrected version that resolves them without changing the meaning.
+
+Text:
+"""
+${text}
+"""`
+    )
+);
+
+server.registerPrompt(
+  "explain_style_rule",
+  {
+    title: "Explain a Vale rule",
+    description: "Explain what a Vale rule checks and how to satisfy it.",
+    argsSchema: {
+      rule: z.string().describe("Rule name as shown in lint results, e.g. write-good.Passive"),
+    },
+  },
+  ({ rule }) =>
+    userPrompt(
+      `Use explain_rule for "${rule}", then explain in plain language what it checks, why the style guide has it, and show a before and after example of text that triggers it and text that passes.`
+    )
 );
 
 /**

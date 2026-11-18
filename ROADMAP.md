@@ -55,8 +55,8 @@ Ranked by value for effort. Based on a read of `src/` as of v0.1.0.
       to keep results small in context.
 - [x] **Suggested fixes**: expose `Action` data (Vale's `suggest` actions)
       in `structuredContent` so clients can offer one-click replacements.
-- [ ] **MCP resources/prompts**: expose the active `.vale.ini` as a resource;
-      add a "fix all issues in this file" prompt.
+- [x] **MCP resources/prompts**: `vale://config` resource; `fix_style_issues`,
+      `review_text`, `explain_style_rule` prompts.
 - [ ] **Vale in `vale_status`**: show active config path and installed
       packages (what `valeConfigPath` resolved to) — currently only in logs.
 - [ ] Windows support check: `execFile` change plus `vale.exe` lookup.
@@ -113,3 +113,6 @@ Release follow-ups:
 - [x] Trusted publishing verified: 0.2.1 published via OIDC with provenance.
 - [ ] Delete the unused `NPM_TOKEN` repo secret.
 - [ ] Consider `npm deprecate vale-mcp@0.1.0` (pre-security-fix).
+- [ ] Resources/prompts: add a rules resource or template (`vale://rules/{style}`)
+      if clients want browsable rules; prompts are static text, so check
+      real clients render the arguments sensibly (only tested via the SDK client).
