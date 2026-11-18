@@ -77,6 +77,39 @@ export interface CheckFileResult {
 }
 
 /**
+ * Where a rule applies in the active config (one entry per [glob] section)
+ */
+export interface RuleSection {
+  glob: string;
+  enabled: boolean;
+  /** Effective level: the config's override, else the rule's own */
+  level?: string;
+}
+
+/**
+ * A Vale rule discovered in a style on the StylesPath
+ */
+export interface RuleInfo {
+  /** "Style.Rule" */
+  name: string;
+  style: string;
+  /** Vale check type, e.g. existence, substitution */
+  extends?: string;
+  level?: string;
+  message?: string;
+  description?: string;
+  link?: string;
+  sections: RuleSection[];
+}
+
+export interface ExplainRuleResult {
+  rule: RuleInfo;
+  file: string;
+  /** The rule's YAML source */
+  definition: string;
+}
+
+/**
  * Server configuration options
  */
 export interface ValeServerConfig {

@@ -1,4 +1,4 @@
-import { CheckFileResult, CheckOptions } from "./types.js";
+import { CheckFileResult, CheckOptions, RuleInfo, ExplainRuleResult } from "./types.js";
 export declare const MAX_TEXT_BYTES: number;
 /**
  * Checks if Vale is installed and accessible (with caching)
@@ -38,4 +38,14 @@ export declare function checkDirectory(dirPath: string, configPath?: string, opt
  * Runs Vale on text passed directly (via stdin)
  */
 export declare function checkText(text: string, textFileExt?: string, configPath?: string, options?: CheckOptions): Promise<CheckFileResult>;
+/**
+ * Lists the rules of the styles the active config uses (optionally one style).
+ * Vale's built-in "Vale" style has no files on disk, so it is not listed.
+ */
+export declare function listRules(configPath?: string, style?: string): Promise<RuleInfo[]>;
+/**
+ * Returns one rule's YAML definition and where it is active.
+ * `rule` is "Style.Rule" as shown in lint results (the `check` field).
+ */
+export declare function explainRule(rule: string, configPath?: string): Promise<ExplainRuleResult>;
 //# sourceMappingURL=vale-runner.d.ts.map

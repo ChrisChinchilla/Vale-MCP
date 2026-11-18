@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- **`list_rules` tool:** lists the rules of the styles the active config uses,
+  with level, check type, message and enabled/disabled state per config section.
+- **`explain_rule` tool:** returns one rule's YAML definition and where it is
+  active, given its `Style.Rule` name from a lint result.
+
 ## Version 0.2.1 - Publishing via npm trusted publishing (2026-11-18)
 
 ### Changed

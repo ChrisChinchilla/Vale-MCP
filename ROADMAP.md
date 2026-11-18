@@ -47,7 +47,7 @@ Ranked by value for effort. Based on a read of `src/` as of v0.1.0.
 
 ## 3. Features
 
-- [ ] **`list_rules` / `explain_rule`**: wrap `vale ls-config` and
+- [x] **`list_rules` / `explain_rule`**: wrap `vale ls-config` and
       `vale ls-vars`; lets an assistant explain *why* a rule fired.
 - [x] **`check_directory` / glob**: lint many files in one call with a
       combined summary (Vale already accepts directories).
@@ -102,8 +102,9 @@ Test and CI gaps:
       and `config_path` are checked.
 - [ ] `check_directory` has no file-count cap beyond the 60s timeout and 10 MB
       output limit; consider a `--glob` input.
-- [ ] `list_rules`/`explain_rule` (above) was investigated only to the
-      `vale ls-config` level; nothing is built.
+- [ ] `list_rules`: parse multi-line YAML values (needs a YAML parser or a
+      smarter reader), cap/paginate very large rule sets, and list the
+      built-in `Vale.*` rules from docs rather than skipping them.
 
 Release follow-ups:
 

@@ -381,6 +381,38 @@ Lint every file Vale supports in a directory, recursively.
 
 > "Check everything in the docs folder, errors only"
 
+### `list_rules`
+
+List the rules (style checks) available in the active Vale config.
+
+**Parameters:**
+
+- `style` (optional): Only list rules from this style, such as `write-good`
+- `config_path` (optional): Path to a `.vale.ini` to use
+
+**Returns:** each rule's name (`Style.Rule`, as shown in lint results),
+level, check type, message and where it's enabled or disabled. Vale's
+built-in `Vale` style (spelling and similar) has no rule files and isn't
+listed. Only the first line of each rule's `message`, `description` and
+`link` is read; multi-line YAML values come back empty.
+
+**Example usage in AI:**
+
+> "Which Vale rules are active for this project?"
+
+### `explain_rule`
+
+Show one rule's full YAML definition and where it's active.
+
+**Parameters:**
+
+- `rule` (required): Rule name in `Style.Rule` form, such as `write-good.Passive`
+- `config_path` (optional): Path to a `.vale.ini` to use
+
+**Example usage in AI:**
+
+> "Why did Vale flag `write-good.Passive`, and how do I fix it?"
+
 ### `check_text`
 
 Lint AI-generated text against Vale style rules before it's written to a file or artifact.

@@ -5,7 +5,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import type { CheckFileResult } from "./types.js";
 import { z } from "zod";
-import { checkValeInstalled, checkFile, checkText, syncValeStyles, checkDirectory, isSupportedValeVersion } from "./vale-runner.js";
+import { checkValeInstalled, checkFile, checkText, syncValeStyles, checkDirectory, listRules, explainRule, isSupportedValeVersion } from "./vale-runner.js";
 import {
   loadConfig,
   verifyConfigFile,
@@ -524,6 +524,103 @@ server.registerTool(
       });
       debug(`check_directory result - issues found: ${result.summary.total}`);
       return toToolResult(result);
+    } catch (error) {
+      return handleValeLintError(error);
+    }
+  }
+);
+
+server.registerTool(
+  "list_rules",
+  {
+    description:
+      "List the Vale rules (style checks) available in the active config, with each rule's name (Style.Rule, as shown in lint results), level, check type, message and whether it is enabled. Use it to see what Vale will check, or to find a rule to explain. Vale's built-in 'Vale' style (spelling etc.) has no rule files and is not listed.",
+    inputSchema: {
+      style: z
+        .string()
+        .optional()
+        .describe("Only list rules from this style (e.g. 'write-good'). Defaults to all styles the config uses."),
+      config_path: z
+        .string()
+        .optional()
+        .describe("Optional path to .vale.ini file. If not provided, uses the server's configured path or searches in the current directory."),
+    },
+    annotations: {
+      readOnlyHint: true,
+      openWorldHint: false,
+    },
+  },
+  async ({ style, config_path }) => {
+    debug(`list_rules called - style: ${style}, config_path: ${config_path}`);
+
+    const valeCheck = await checkValeInstalled();
+    if (!valeCheck.installed) {
+      return createValeNotInstalledResponse();
+    }
+
+    try {
+      const rules = await listRules(config_path ?? valeConfigPath, style);
+      const lines = rules.map((r) => {
+        const enabled = r.sections.some((s) => s.enabled) ? "" : " [disabled]";
+        const detail = [r.level, r.extends].filter(Boolean).join(", ");
+        return `- **${r.name}**${enabled}${detail ? ` (${detail})` : ""}${r.message ? `: ${r.message}` : ""}`;
+      });
+      return {
+        content: [
+          {
+            type: "text",
+            text: rules.length
+              ? `## Vale rules (${rules.length})\n\n${lines.join("\n")}\n\nUse \`explain_rule\` with a rule name for its full definition.`
+              : "No rule files found for the styles in this config. (Vale's built-in `Vale` style has no files; run `vale_sync` if packages are missing.)",
+          },
+        ],
+        structuredContent: { rules },
+      };
+    } catch (error) {
+      return handleValeLintError(error);
+    }
+  }
+);
+
+server.registerTool(
+  "explain_rule",
+  {
+    description:
+      "Show the full definition of one Vale rule and where it is active, given its name as it appears in lint results (the 'check' field, e.g. 'write-good.Passive'). Use it to explain why a rule fired or how to satisfy it.",
+    inputSchema: {
+      rule: z.string().describe("Rule name in 'Style.Rule' form, e.g. 'write-good.Passive'"),
+      config_path: z
+        .string()
+        .optional()
+        .describe("Optional path to .vale.ini file. If not provided, uses the server's configured path or searches in the current directory."),
+    },
+    annotations: {
+      readOnlyHint: true,
+      openWorldHint: false,
+    },
+  },
+  async ({ rule, config_path }) => {
+    debug(`explain_rule called - rule: ${rule}, config_path: ${config_path}`);
+
+    const valeCheck = await checkValeInstalled();
+    if (!valeCheck.installed) {
+      return createValeNotInstalledResponse();
+    }
+
+    try {
+      const result = await explainRule(rule, config_path ?? valeConfigPath);
+      const where = result.rule.sections
+        .map((s) => `- \`${s.glob}\`: ${s.enabled ? "enabled" : "disabled"}${s.level ? ` (${s.level})` : ""}`)
+        .join("\n");
+      return {
+        content: [
+          {
+            type: "text",
+            text: `## ${result.rule.name}\n\n${result.rule.description ? `${result.rule.description}\n\n` : ""}**Active in:**\n${where || "- not used by the active config"}\n\n**Definition** (\`${result.file}\`):\n\`\`\`yaml\n${result.definition.trimEnd()}\n\`\`\`${result.rule.link ? `\n\nMore info: ${result.rule.link}` : ""}`,
+          },
+        ],
+        structuredContent: { rule: result.rule, file: result.file, definition: result.definition },
+      };
     } catch (error) {
       return handleValeLintError(error);
     }

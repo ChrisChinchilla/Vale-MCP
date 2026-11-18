@@ -5,7 +5,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
-import { checkFile, checkText, checkDirectory, isSupportedValeVersion, MAX_TEXT_BYTES } from "../build/vale-runner.js";
+import { checkFile, checkText, checkDirectory, listRules, explainRule, isSupportedValeVersion, MAX_TEXT_BYTES } from "../build/vale-runner.js";
 
 const fixtures = path.join(path.dirname(fileURLToPath(import.meta.url)), "fixtures");
 const config = path.join(fixtures, ".vale.ini");
@@ -101,4 +101,47 @@ test("suggested fixes are exposed", async () => {
   const swap = r.issues.find((i) => i.check === "Test.Swap");
   assert.deepEqual(swap.action, { name: "replace", params: ["quux"] });
   assert.match(r.formatted, /Suggested fix: replace \("quux"\)/);
+});
+
+test("list_rules lists rules of the active styles", async () => {
+  const rules = await listRules(config);
+  assert.deepEqual(rules.map((r) => r.name), ["Test.Foo", "Test.Swap"]);
+  const swap = rules.find((r) => r.name === "Test.Swap");
+  assert.equal(swap.extends, "substitution");
+  assert.equal(swap.level, "error");
+  assert.equal(swap.message, "Use '%s' instead of '%s'.");
+  assert.deepEqual(swap.sections, [{ glob: "*.md", enabled: true, level: "error" }]);
+});
+
+test("list_rules reflects disabled rules and level overrides, and filters by style", async () => {
+  const rules = await listRules(path.join(fixtures, "disabled.ini"), "Test");
+  assert.equal(rules.find((r) => r.name === "Test.Foo").sections[0].enabled, false);
+  assert.equal(rules.find((r) => r.name === "Test.Swap").sections[0].level, "suggestion");
+  await assert.rejects(listRules(config, "Nope"), /not used by the active Vale config/);
+});
+
+test("explain_rule returns the definition and where the rule is active", async () => {
+  const r = await explainRule("Test.Swap", config);
+  assert.match(r.definition, /swap:/);
+  assert.equal(r.file, path.join(fixtures, "styles", "Test", "Swap.yml"));
+  assert.equal(r.rule.sections[0].glob, "*.md");
+});
+
+test("explain_rule rejects bad names, built-ins and unknown rules", async () => {
+  await assert.rejects(explainRule("../../etc/passwd", config), /Invalid rule name/);
+  await assert.rejects(explainRule("Test/../Foo", config), /Invalid rule name/);
+  await assert.rejects(explainRule("nodot", config), /Invalid rule name/);
+  await assert.rejects(explainRule("Vale.Spelling", config), /built-in/);
+  await assert.rejects(explainRule("Test.Nope", config), /not found/);
+});
+
+test("explain_rule honours VALE_ALLOWED_ROOTS", async () => {
+  const other = fs.mkdtempSync(path.join(os.tmpdir(), "vale-mcp-"));
+  process.env.VALE_ALLOWED_ROOTS = other;
+  try {
+    await assert.rejects(explainRule("Test.Swap", config), /Access denied/);
+    await assert.rejects(listRules(config), /Access denied/);
+  } finally {
+    delete process.env.VALE_ALLOWED_ROOTS;
+  }
 });
