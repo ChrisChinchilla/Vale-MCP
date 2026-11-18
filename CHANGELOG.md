@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## Version 0.2.0 - Security hardening and new tools (2026-11-18)
 
 ### Security
 

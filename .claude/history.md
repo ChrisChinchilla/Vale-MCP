@@ -11,6 +11,16 @@ Keep entries short — a few lines, not a report.
 
 ---
 
+## 2026-11-18 — Release 0.2.0 and the release skill
+
+npm had only the manual 0.1.0 (pre-hardening code, still shell-injectable),
+so 0.2.0 was cut as the first release through the automated path. Added
+`.claude/skills/release/SKILL.md` documenting the flow (release PR → user
+merges → `gh release create` → publish workflow → verify) and a
+tag-vs-`package.json` check in `publish.yml`. 0.1.0 on npm is vulnerable;
+consider `npm deprecate vale-mcp@0.1.0 "Upgrade to >=0.2.0 (security fix)"`
+once 0.2.0 is live (needs npm login, user's call).
+
 ## 2026-11-18 — main CI broke: Dependabot TS 7 + @types/node 26
 
 Merging Dependabot's TypeScript 7.0.2 and @types/node 26 PRs together left
