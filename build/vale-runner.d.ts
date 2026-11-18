@@ -1,17 +1,13 @@
 import { CheckFileResult, CheckOptions, ExplainRuleResult, ListRulesResult, ValeSetupInfo } from "./types.js";
 export declare const MAX_TEXT_BYTES: number;
 /**
- * Checks if Vale is installed and accessible (with caching)
+ * Checks if Vale is installed and accessible
  */
 export declare function checkValeInstalled(): Promise<{
     installed: boolean;
     version?: string;
     error?: string;
 }>;
-/**
- * Clear the Vale installation cache (useful for testing or if Vale is installed after server start)
- */
-export declare function clearValeInstallCache(): void;
 /**
  * Runs vale sync to download styles and packages
  */

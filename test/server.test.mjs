@@ -103,6 +103,7 @@ test("an unrelated failure does not suggest vale_sync", async () => {
   assert.equal(r.isError, true);
   assert.match(text(r), /not found or not readable/);
   assert.doesNotMatch(text(r), /vale_sync/);
+  assert.equal(JSON.parse(text(r)).details, undefined, "no stack trace without --debug");
 });
 
 test("vale_sync succeeds for a config with no packages", async () => {

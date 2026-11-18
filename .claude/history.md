@@ -21,6 +21,15 @@ differently from Vale. Lesson: any path passed to the `vale` child must be
 absolute, because the child's cwd is never the server's cwd. A1-A4 fixed in
 the "audit fixes" PR; A5-A8 left open.
 
+Fix notes: every entry point now `path.resolve`s `config_path` before the
+allowed-roots check and before passing it to Vale. Install checks cache only
+successes (`clearValeInstallCache` removed). Error `details` (stack) only with
+`--debug`. For A4, writing the test showed Node does NOT set `error.killed`
+on maxBuffer overflow, so the truncated stdout was parsed and gave "Failed to
+parse Vale JSON output" instead of any size message; `runVale` now checks
+`code === "ERR_CHILD_PROCESS_STDIO_MAXBUFFER"` explicitly. `min_severity` is
+also passed to Vale as `--minAlertLevel` (still post-filtered).
+
 ## 2026-11-18 — Roadmap clean-up: timeout test, built-ins, block scalars, status
 
 - `VALE_TIMEOUT_MS` env var added mainly so the timeout/kill path is testable

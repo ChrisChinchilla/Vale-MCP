@@ -92,8 +92,8 @@ Test and CI gaps:
       list, filters, `check_directory`, validation errors, `vale_sync` hint
       vs unrelated errors, `vale_sync` success, `VALE_ALLOWED_ROOTS` incl.
       `vale_sync`'s `config_path`.
-- [x] Timeout kill path tested (`VALE_TIMEOUT_MS=1`); the maxBuffer overflow
-      path shares the same branch but has no dedicated test.
+- [x] Timeout kill path tested (`VALE_TIMEOUT_MS=1`) and the maxBuffer
+      overflow path tested (1 MB of text producing >10 MB of Vale output).
 - [ ] CI only runs Node 22 and Vale 3.27.0 (pinned URL in `ci.yml`). Add Node
       24 and a Vale-version matrix; bump the pin deliberately.
 - [ ] `isStylesDirectoryError` keys on Vale 3.27.0's E201 wording; re-check on
@@ -120,13 +120,15 @@ Release follow-ups:
 
 ## 6. Audit of `main` (2026-11-18, after PRs #37-#40)
 
+Status: A1-A4 fixed in the audit-fixes PR; A5-A8 open.
+
 Full-repo audit; findings numbered as reported. Each has a concrete failing
 case. Not checked: Windows, Vale other than 3.27, how real MCP clients render
 prompts, the readme and CI files beyond the quoted lines.
 
 Must fix:
 
-- [ ] **A1. Relative `config_path` breaks every tool.** Vale runs from the
+- [x] **A1. Relative `config_path` breaks every tool.** Vale runs from the
       file's/config's/target dir, so `--config=fixtures/.vale.ini` is read
       from the wrong folder (`E100 ... does not exist`) in `list_rules`,
       `explain_rule`, `vale_sync`, `check_file`, `check_directory`,
@@ -138,17 +140,21 @@ Must fix:
 
 Should fix:
 
-- [ ] **A2. "Vale not installed" is cached forever** (`checkValeInstalled`).
+- [x] **A2. "Vale not installed" is cached forever** (`checkValeInstalled`).
       Install Vale after the server starts and `vale_status` still says
       missing until restart, contradicting the startup message.
       `clearValeInstallCache` is never called. Fix: cache successes only.
-- [ ] **A3. Error replies include `error.stack`** (absolute local paths) in
+- [x] **A3. Error replies include `error.stack`** (absolute local paths) in
       every failure. Fix: only with `--debug`.
-- [ ] **A4. Large directories fail with the wrong message and no results.**
-      Vale output is capped at 10 MB; hitting it says "timed out or produced
-      too much output", and `max_issues`/`min_severity` run after Vale has
-      printed everything. Fix: separate maxBuffer message; pass
-      `--minAlertLevel` to Vale when `min_severity` is set.
+- [x] **A4. Large directories fail with the wrong message and no results.**
+      Vale output is capped at 10 MB and `max_issues`/`min_severity` run after
+      Vale has printed everything. Fixed: a clear "more than 10 MB" error,
+      and `--minAlertLevel` is passed to Vale when `min_severity` is set.
+      Correction found while testing: the audit said the old message was
+      "timed out or too much output", but Node doesn't set `error.killed` on
+      maxBuffer overflow, so the truncated JSON was parsed and failed with a
+      confusing "Failed to parse Vale JSON output". The overflow code is now
+      checked explicitly.
 
 Nice to have:
 

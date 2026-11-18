@@ -56,10 +56,16 @@ function runVale(
         maxBuffer: VALE_MAX_BUFFER,
       },
       (error, stdout, stderr) => {
-        if (error && (error.killed || (options.requireStdout !== false && !stdout))) {
-          const detail = error.killed
-            ? "Vale timed out or produced too much output"
-            : describeStderr(stderr) || error.message;
+        // Node doesn't set `killed` when maxBuffer is exceeded, and the truncated stdout would
+        // otherwise be parsed as if it were complete
+        const overflow = (error as NodeJS.ErrnoException | null)?.code === "ERR_CHILD_PROCESS_STDIO_MAXBUFFER";
+        if (error && (overflow || error.killed || (options.requireStdout !== false && !stdout))) {
+          const detail =
+            overflow
+              ? `Vale produced more than ${VALE_MAX_BUFFER / 1024 / 1024} MB of output. Check a smaller path, or set min_severity to report fewer issues.`
+              : error.killed
+                ? `Vale timed out after ${options.timeout ?? (Number(process.env.VALE_TIMEOUT_MS) || VALE_TIMEOUT_MS)} ms`
+                : describeStderr(stderr) || error.message;
           reject(new Error(`Vale execution failed: ${detail}`));
         } else if (error && options.requireStdout === false) {
           reject(new Error(stderr || error.message));
@@ -74,45 +80,26 @@ function runVale(
   });
 }
 
-// Cache for Vale installation check
-let valeInstallCache: {
-  checked: boolean;
-  installed: boolean;
-  version?: string;
-  error?: string;
-} = {
-  checked: false,
-  installed: false,
-};
+// Only a successful check is cached: if Vale is installed after the server
+// starts, the next call should notice.
+let cachedValeVersion: string | undefined;
 
 /**
- * Checks if Vale is installed and accessible (with caching)
+ * Checks if Vale is installed and accessible
  */
 export async function checkValeInstalled(): Promise<{
   installed: boolean;
   version?: string;
   error?: string;
 }> {
-  // Return cached result if already checked
-  if (valeInstallCache.checked) {
-    return {
-      installed: valeInstallCache.installed,
-      version: valeInstallCache.version,
-      error: valeInstallCache.error,
-    };
-  }
+  if (cachedValeVersion) return { installed: true, version: cachedValeVersion };
 
-  // Perform the check
   try {
     const { stdout } = await runVale(["--version"]);
-    valeInstallCache = {
-      checked: true,
-      installed: true,
-      version: stdout.trim(),
-    };
+    cachedValeVersion = stdout.trim();
+    return { installed: true, version: cachedValeVersion };
   } catch (error) {
-    valeInstallCache = {
-      checked: true,
+    return {
       installed: false,
       error:
         error instanceof Error
@@ -120,22 +107,6 @@ export async function checkValeInstalled(): Promise<{
           : "Vale not found in PATH. To install Vale, go to https://vale.sh/docs/vale-cli/installation/",
     };
   }
-
-  return {
-    installed: valeInstallCache.installed,
-    version: valeInstallCache.version,
-    error: valeInstallCache.error,
-  };
-}
-
-/**
- * Clear the Vale installation cache (useful for testing or if Vale is installed after server start)
- */
-export function clearValeInstallCache(): void {
-  valeInstallCache = {
-    checked: false,
-    installed: false,
-  };
 }
 
 /**
@@ -153,6 +124,7 @@ export async function syncValeStyles(configPath?: string): Promise<{
 
     // If config path provided, use its directory as working dir
     if (configPath) {
+      configPath = path.resolve(configPath); // Vale runs from another cwd, so it must be absolute
       try {
         await assertPathAllowed(configPath);
         await fs.access(configPath, fsSync.constants.R_OK);
@@ -367,6 +339,11 @@ function formatValeResults(
   return output;
 }
 
+/** Lets Vale itself drop low-severity issues, so big runs print less */
+function minAlertArgs(options: CheckOptions): string[] {
+  return options.minSeverity ? [`--minAlertLevel=${options.minSeverity}`] : [];
+}
+
 const SEVERITY_RANK: Record<ValeSeverity, number> = { suggestion: 0, warning: 1, error: 2 };
 
 /**
@@ -408,7 +385,10 @@ export async function checkFile(
   // Resolve to absolute path (also stops a leading "-" being read as a flag)
   const absolutePath = path.resolve(process.cwd(), filePath);
   await assertPathAllowed(absolutePath);
-  if (configPath) await assertPathAllowed(configPath);
+  if (configPath) {
+    configPath = path.resolve(configPath); // Vale runs from the file's dir, not ours
+    await assertPathAllowed(configPath);
+  }
 
   // Verify file exists and is readable
   try {
@@ -417,7 +397,7 @@ export async function checkFile(
     throw new Error(`File not found or not readable: ${filePath}`);
   }
 
-  const args = ["--output=JSON"];
+  const args = ["--output=JSON", ...minAlertArgs(options)];
 
   // Only use --config if explicitly provided (e.g., from VALE_CONFIG_PATH env var)
   // Otherwise let Vale do its natural upward search from the file's location
@@ -447,7 +427,10 @@ export async function checkDirectory(
 ): Promise<CheckFileResult> {
   const absolutePath = path.resolve(process.cwd(), dirPath);
   await assertPathAllowed(absolutePath);
-  if (configPath) await assertPathAllowed(configPath);
+  if (configPath) {
+    configPath = path.resolve(configPath); // Vale runs from the target dir, not ours
+    await assertPathAllowed(configPath);
+  }
 
   try {
     if (!(await fs.stat(absolutePath)).isDirectory()) throw new Error();
@@ -455,7 +438,7 @@ export async function checkDirectory(
     throw new Error(`Directory not found: ${dirPath}`);
   }
 
-  const args = ["--output=JSON"];
+  const args = ["--output=JSON", ...minAlertArgs(options)];
   if (configPath) args.push(`--config=${configPath}`);
   args.push(absolutePath);
 
@@ -499,13 +482,14 @@ export async function checkText(
     }
   }
   if (configPath) {
+    configPath = path.resolve(configPath);
     await assertPathAllowed(configPath);
     args.push(`--config=${configPath}`);
     console.error(`Using explicit config: ${configPath}`);
   } else {
     console.error(`Using Vale defaults or searching for config from current directory`);
   }
-  args.push("--output=JSON");
+  args.push("--output=JSON", ...minAlertArgs(options));
 
   // Vale has no stdin flag; with no file argument it reads stdin
   const { stdout } = await runVale(args, { cwd: process.cwd(), input: text });
@@ -527,9 +511,10 @@ async function loadLsConfig(configPath?: string): Promise<ValeLsConfig> {
   const args = ["ls-config"];
   let cwd = process.cwd();
   if (configPath) {
+    configPath = path.resolve(configPath);
     await assertPathAllowed(configPath);
     args.push(`--config=${configPath}`);
-    cwd = path.dirname(path.resolve(configPath));
+    cwd = path.dirname(configPath);
   }
   const { stdout } = await runVale(args, { cwd });
   // Same shape check as lint output: config errors come back as {Code, Text}

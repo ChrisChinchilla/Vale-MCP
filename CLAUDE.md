@@ -12,7 +12,9 @@ linting to AI coding assistants (Claude Desktop, Cursor, etc.) over stdio.
   the active `.vale.ini` on startup.
 - `src/vale-runner.ts` — wrapper around the `vale` binary (always `execFile`,
   never a shell string — see history): install
-  detection, `check_file`, `check_text`, `vale sync`.
+  detection, `check_file`, `check_text`, `vale sync`. Vale runs with a
+  different cwd than the server, so any path passed to it (especially
+  `config_path`) must be made absolute first.
 - `src/config.ts` — config discovery/loading (`VALE_CONFIG_PATH` env var,
   upward search for `.vale.ini`) and `assertPathAllowed` (`VALE_ALLOWED_ROOTS`).
 - `src/types.ts` — shared TypeScript types.
