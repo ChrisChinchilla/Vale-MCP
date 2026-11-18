@@ -11,6 +11,15 @@ Keep entries short — a few lines, not a report.
 
 ---
 
+## 2026-11-18 — 0.2.0 published manually; 0.2.1 tests the OIDC workflow
+
+After the EOTP failure the user published 0.2.0 by hand (from the release PR
+commit; same content as the tagged merge commit), so tag/release recreation
+was dropped. 0.2.1 is a no-code patch release whose purpose is to exercise
+the trusted-publishing workflow end to end. If it fails, see the release
+skill's failure section; a workflow fix needs a new tag (0.2.2), since
+versions can't be republished.
+
 ## 2026-11-18 — First release run failed: EOTP
 
 The v0.2.0 release was created by hand-off after the PR merged (no release
