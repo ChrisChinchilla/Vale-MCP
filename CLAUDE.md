@@ -32,6 +32,8 @@ linting to AI coding assistants (Claude Desktop, Cursor, etc.) over stdio.
 - `vale_status` — check Vale is installed, with platform install instructions.
 - `vale_sync` — run `vale sync` to download style packages (fixes E201 missing-style errors).
 - `check_file` — lint a file path.
+- `vale_status` also reports config path / packages / installed styles via
+  `getValeSetup` (best-effort, never fails the status call).
 - `list_rules` / `explain_rule` — read rule YAML from the StylesPath dirs that
   `vale ls-config` reports (Vale has no "list rules" command). `explain_rule`
   only accepts `Style.Rule` names matching a segment whitelist (path-traversal

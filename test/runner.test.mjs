@@ -5,7 +5,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
-import { checkFile, checkText, checkDirectory, listRules, explainRule, isSupportedValeVersion, MAX_TEXT_BYTES } from "../build/vale-runner.js";
+import { checkFile, checkText, checkDirectory, listRules, explainRule, getValeSetup, isSupportedValeVersion, MAX_TEXT_BYTES } from "../build/vale-runner.js";
 
 const fixtures = path.join(path.dirname(fileURLToPath(import.meta.url)), "fixtures");
 const config = path.join(fixtures, ".vale.ini");
@@ -104,8 +104,10 @@ test("suggested fixes are exposed", async () => {
 });
 
 test("list_rules lists rules of the active styles", async () => {
-  const rules = await listRules(config);
-  assert.deepEqual(rules.map((r) => r.name), ["Test.Foo", "Test.Swap"]);
+  const { rules, total, truncated } = await listRules(config);
+  assert.deepEqual(rules.map((r) => r.name), ["Test.Folded", "Test.Foo", "Test.Swap"]);
+  assert.equal(total, 3);
+  assert.equal(truncated, false);
   const swap = rules.find((r) => r.name === "Test.Swap");
   assert.equal(swap.extends, "substitution");
   assert.equal(swap.level, "error");
@@ -113,11 +115,32 @@ test("list_rules lists rules of the active styles", async () => {
   assert.deepEqual(swap.sections, [{ glob: "*.md", enabled: true, level: "error" }]);
 });
 
+test("list_rules reads folded and literal block scalars", async () => {
+  const { rules } = await listRules(config, "Test");
+  const folded = rules.find((r) => r.name === "Test.Folded");
+  assert.equal(folded.message, "Folded message across two lines for '%s'.");
+  assert.equal(folded.description, "Literal line one\nliteral line two");
+  assert.equal(folded.level, "suggestion");
+});
+
 test("list_rules reflects disabled rules and level overrides, and filters by style", async () => {
-  const rules = await listRules(path.join(fixtures, "disabled.ini"), "Test");
+  const { rules } = await listRules(path.join(fixtures, "disabled.ini"), "Test");
   assert.equal(rules.find((r) => r.name === "Test.Foo").sections[0].enabled, false);
   assert.equal(rules.find((r) => r.name === "Test.Swap").sections[0].level, "suggestion");
   await assert.rejects(listRules(config, "Nope"), /not used by the active Vale config/);
+});
+
+test("list_rules includes Vale's built-in rules when the Vale style is used", async () => {
+  const { rules } = await listRules(path.join(fixtures, "disabled.ini"), "Vale");
+  assert.deepEqual(rules.map((r) => r.name), ["Vale.Avoid", "Vale.Repetition", "Vale.Spelling", "Vale.Terms"]);
+  assert.ok(rules.every((r) => r.builtin && r.description && r.link));
+});
+
+test("list_rules max_rules truncates but reports the total", async () => {
+  const r = await listRules(config, "Test", 2);
+  assert.equal(r.rules.length, 2);
+  assert.equal(r.total, 3);
+  assert.equal(r.truncated, true);
 });
 
 test("explain_rule returns the definition and where the rule is active", async () => {
@@ -131,8 +154,16 @@ test("explain_rule rejects bad names, built-ins and unknown rules", async () => 
   await assert.rejects(explainRule("../../etc/passwd", config), /Invalid rule name/);
   await assert.rejects(explainRule("Test/../Foo", config), /Invalid rule name/);
   await assert.rejects(explainRule("nodot", config), /Invalid rule name/);
-  await assert.rejects(explainRule("Vale.Spelling", config), /built-in/);
   await assert.rejects(explainRule("Test.Nope", config), /not found/);
+  await assert.rejects(explainRule("Vale.Nope", path.join(fixtures, "disabled.ini")), /not found/);
+});
+
+test("explain_rule describes built-in rules without a file", async () => {
+  const r = await explainRule("Vale.Spelling", path.join(fixtures, "disabled.ini"));
+  assert.equal(r.rule.builtin, true);
+  assert.match(r.rule.description, /misspelled/);
+  assert.equal(r.file, undefined);
+  assert.equal(r.definition, undefined);
 });
 
 test("explain_rule honours VALE_ALLOWED_ROOTS", async () => {
@@ -144,4 +175,40 @@ test("explain_rule honours VALE_ALLOWED_ROOTS", async () => {
   } finally {
     delete process.env.VALE_ALLOWED_ROOTS;
   }
+});
+
+test("getValeSetup reports config, packages and installed styles", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "vale-mcp-"));
+  fs.mkdirSync(path.join(dir, "styles", "Alpha"), { recursive: true });
+  fs.mkdirSync(path.join(dir, "styles", "config"), { recursive: true });
+  fs.writeFileSync(path.join(dir, ".vale.ini"), "StylesPath = styles\nPackages = Alpha, Beta\n[*.md]\nBasedOnStyles = Alpha\n");
+  const info = await getValeSetup(path.join(dir, ".vale.ini"));
+  assert.equal(info.configPath, path.join(dir, ".vale.ini"));
+  assert.deepEqual(info.packages, ["Alpha", "Beta"]);
+  assert.deepEqual(info.installedStyles, ["Alpha"]);
+});
+
+test("getValeSetup does not throw without a config or when access is denied", async () => {
+  const none = await getValeSetup(undefined);
+  assert.deepEqual(none.packages, []);
+  process.env.VALE_ALLOWED_ROOTS = os.tmpdir();
+  try {
+    const denied = await getValeSetup(config);
+    assert.deepEqual(denied.packages, []);
+    assert.deepEqual(denied.installedStyles, []);
+  } finally {
+    delete process.env.VALE_ALLOWED_ROOTS;
+  }
+});
+
+test("VALE_TIMEOUT_MS kills a slow Vale run with a clear error", async () => {
+  process.env.VALE_TIMEOUT_MS = "1";
+  try {
+    await assert.rejects(checkText("A foobaz.", ".md", config), /timed out/);
+    await assert.rejects(checkFile(path.join(fixtures, "bad.md"), config), /timed out/);
+  } finally {
+    delete process.env.VALE_TIMEOUT_MS;
+  }
+  const ok = await checkText("A foobaz.", ".md", config);
+  assert.equal(ok.summary.total, 1);
 });

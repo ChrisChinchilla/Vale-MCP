@@ -11,6 +11,25 @@ Keep entries short — a few lines, not a report.
 
 ---
 
+## 2026-11-18 — Roadmap clean-up: timeout test, built-ins, block scalars, status
+
+- `VALE_TIMEOUT_MS` env var added mainly so the timeout/kill path is testable
+  (a 1 ms timeout kills any real Vale run); also useful for huge directories.
+  `runVale` reads it per call, so tests set/unset it freely. The maxBuffer
+  overflow path shares the same `killed` branch but isn't tested separately.
+- `list_rules` now returns `{rules, total, truncated}` (breaking only for
+  code calling `listRules` directly; the tool output just gained fields).
+  Built-in `Vale.*` rules come from a hardcoded table in `vale-runner.ts`
+  (Avoid/Repetition/Spelling/Terms, descriptions from vale.sh docs); levels
+  deliberately omitted since they depend on user config. They're only used
+  when no `Vale` style directory exists on the StylesPath. If Vale adds
+  built-ins, update `BUILTIN_VALE_RULES`.
+- `parseRuleYaml` handles `>`/`|` block scalars; still not a YAML parser.
+- `vale_status` gained `config_path`, `packages` (regex over the `Packages =`
+  line) and `installed_styles` (dirs under the StylesPath, minus `config`).
+- README global install line fixed (`npm install -g vale-mcp`).
+Stacked on the resources/prompts PR (#39).
+
 ## 2026-11-18 — MCP resources and prompts
 
 Added `vale://config` (resource) and three prompts via `registerResource` /

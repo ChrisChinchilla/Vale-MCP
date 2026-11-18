@@ -1,4 +1,4 @@
-import { CheckFileResult, CheckOptions, RuleInfo, ExplainRuleResult } from "./types.js";
+import { CheckFileResult, CheckOptions, ExplainRuleResult, ListRulesResult, ValeSetupInfo } from "./types.js";
 export declare const MAX_TEXT_BYTES: number;
 /**
  * Checks if Vale is installed and accessible (with caching)
@@ -40,12 +40,19 @@ export declare function checkDirectory(dirPath: string, configPath?: string, opt
 export declare function checkText(text: string, textFileExt?: string, configPath?: string, options?: CheckOptions): Promise<CheckFileResult>;
 /**
  * Lists the rules of the styles the active config uses (optionally one style).
- * Vale's built-in "Vale" style has no files on disk, so it is not listed.
+ * Vale's built-in "Vale" style is listed from documentation, since it has no
+ * files, unless the user has their own style directory named "Vale".
  */
-export declare function listRules(configPath?: string, style?: string): Promise<RuleInfo[]>;
+export declare function listRules(configPath?: string, style?: string, maxRules?: number): Promise<ListRulesResult>;
 /**
  * Returns one rule's YAML definition and where it is active.
  * `rule` is "Style.Rule" as shown in lint results (the `check` field).
  */
 export declare function explainRule(rule: string, configPath?: string): Promise<ExplainRuleResult>;
+/**
+ * Describes the Vale setup in use: config path, declared packages and the
+ * styles actually present on the StylesPath. Best-effort: anything that can't
+ * be read (no config, access denied) is left empty rather than failing status.
+ */
+export declare function getValeSetup(configPath?: string): Promise<ValeSetupInfo>;
 //# sourceMappingURL=vale-runner.d.ts.map

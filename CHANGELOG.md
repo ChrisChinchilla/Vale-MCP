@@ -2,7 +2,20 @@
 
 ## Unreleased
 
+### Changed
+
+- `list_rules` lists Vale's built-in `Vale.*` rules (from documentation, marked
+  `builtin`) and `explain_rule` describes them; `list_rules` reads `>`/`|`
+  block values in rule YAML and accepts `max_rules` (results include `total`
+  and `truncated`).
+- `vale_status` also reports the active config path, declared packages and the
+  style folders found on the StylesPath.
+- README: global install is now `npm install -g vale-mcp` (it previously
+  pointed at a third-party mirror).
+
 ### Added
+
+- `VALE_TIMEOUT_MS` environment variable to change the 60 second Vale timeout.
 
 - **MCP resource `vale://config`:** the active `.vale.ini`.
 - **MCP prompts:** `fix_style_issues`, `review_text` and `explain_style_rule`.
