@@ -7,17 +7,17 @@ jobs:
         runs-on: "ubuntu-latest"
         permissions:
             contents: read
-            id-token: write # npm provenance
+            id-token: write # npm trusted publishing (OIDC) and provenance
         steps:
             - uses: "actions/checkout@v7"
             - uses: "actions/setup-node@v7"
               with:
-                  node-version: 22
+                  node-version: 24 # bundles npm >= 11.5.1, required for trusted publishing
                   registry-url: "https://registry.npmjs.org"
             - name: "Check tag matches package.json"
               run: test "v$(node -p "require('./package.json').version")" = "${{ github.event.release.tag_name }}"
+            - run: npm --version
             - run: npm ci
-            # prepublishOnly runs the build
-            - run: npm publish --provenance --access public
-              env:
-                  NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+            # Authenticated via OIDC trusted publisher (npmjs.com package settings:
+            # ChrisChinchilla/Vale-MCP, publish.yml); no token. prepublishOnly builds.
+            - run: npm publish --access public

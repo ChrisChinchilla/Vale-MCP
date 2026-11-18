@@ -78,7 +78,7 @@ Release steps (need the repo owner):
 
 - [x] (done) Merge PRs in order: #24 → #25 → #26, retargeting each to `main` after
       the previous one merges. All three pass CI.
-- [x] (done) Merge `ci/npm-publish` (release workflow); `NPM_TOKEN` secret is added.
+- [x] (done) Merge `ci/npm-publish` (release workflow); now uses npm trusted publishing, no token.
 - [x] (done, manual) First publish of `vale-mcp` (npm returned 404 for `vale-mcp@latest`, the
       original bug). Check the name is free; if taken, use a scoped name and
       update README and install badges. Bump version for the release
@@ -104,3 +104,12 @@ Test and CI gaps:
       output limit; consider a `--glob` input.
 - [ ] `list_rules`/`explain_rule` (above) was investigated only to the
       `vale ls-config` level; nothing is built.
+
+Release follow-ups:
+
+- [ ] Get 0.2.0 onto npm: v0.2.0's publish failed (EOTP) and its tag still
+      carries the old workflow. Either delete+recreate the tag/release on
+      current `main` (nothing was published) or release 0.2.1.
+- [ ] Verify trusted publishing works on the next release (workflow is untested).
+- [ ] Delete the unused `NPM_TOKEN` repo secret.
+- [ ] Consider `npm deprecate vale-mcp@0.1.0` (pre-security-fix).
