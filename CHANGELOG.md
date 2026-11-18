@@ -13,8 +13,17 @@
 - **Added limits:** 60 second timeout on Vale runs (5 minutes for
   `vale_sync`), 10 MB output cap, and 1 MB cap on `check_text` input.
 
+### Fixed
+
+- Vale config errors (e.g. a style missing from `StylesPath`, code E201) were
+  reported as a confusing "not iterable" failure; they now surface as
+  `E201: <Vale's message>`, and only these trigger the "run `vale_sync`"
+  guidance (previously any "does not exist" error did).
+- `--help` and `--version` print to stdout instead of stderr.
+
 ### Added
 
+- `vale_status` warns when the installed Vale is older than 3.0.
 - `VALE_ALLOWED_ROOTS` environment variable to restrict which files and
   config paths the tools may access (symlinks are resolved).
 - Test suite (`npm test`, uses `node:test` and the installed `vale`).

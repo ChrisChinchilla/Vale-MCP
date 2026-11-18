@@ -22,6 +22,11 @@ export declare function syncValeStyles(configPath?: string): Promise<{
     error?: string;
 }>;
 /**
+ * Vale 3+ is required; versionOutput is e.g. "vale version 3.27.0".
+ * Unparseable output is given the benefit of the doubt.
+ */
+export declare function isSupportedValeVersion(versionOutput?: string): boolean;
+/**
  * Runs Vale on a file at a specific path
  */
 export declare function checkFile(filePath: string, configPath?: string): Promise<CheckFileResult>;

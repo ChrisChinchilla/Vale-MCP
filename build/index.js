@@ -2,7 +2,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { checkValeInstalled, checkFile, checkText, syncValeStyles } from "./vale-runner.js";
+import { checkValeInstalled, checkFile, checkText, syncValeStyles, isSupportedValeVersion } from "./vale-runner.js";
 import { loadConfig, verifyConfigFile, resolveConfigPath, findValeIniInWorkingDir, } from "./config.js";
 import * as path from "path";
 import * as fs from "fs";
@@ -18,7 +18,7 @@ const args = process.argv.slice(2);
 const DEBUG = args.includes("--debug") || args.includes("--verbose") || args.includes("-v");
 // Show help and exit
 if (args.includes("--help") || args.includes("-h")) {
-    console.error(`
+    console.log(`
 Vale MCP Server v${VERSION}
 
 A Model Context Protocol server for Vale prose linting.
@@ -57,7 +57,7 @@ Documentation: https://vale.sh/docs/
 }
 // Show version and exit
 if (args.includes("--version")) {
-    console.error(VERSION);
+    console.log(VERSION);
     process.exit(0);
 }
 /**
@@ -156,11 +156,13 @@ function createValeNotInstalledResponse() {
     };
 }
 /**
- * Check if an error is an E100 styles directory error
+ * Check if an error is an E201 missing styles / StylesPath error
  */
 function isStylesDirectoryError(errorMessage) {
-    // E100 errors typically contain these patterns
-    return /E100|does not exist|Runtime error/i.test(errorMessage);
+    // Vale reports a missing StylesPath or an unsynced style as E201, e.g.
+    // "Style 'Foo' isn't on the StylesPath" / "The StylesPath '...' doesn't exist".
+    // (E100 "path ... does not exist" is a missing config/input, which sync can't fix.)
+    return /E201.*StylesPath/i.test(errorMessage);
 }
 /**
  * Builds the CallToolResult for a caught linting error, with dedicated
@@ -240,7 +242,9 @@ server.registerTool("vale_status", {
                         ? null
                         : getInstallationInstructions(),
                     message: valeCheck.installed
-                        ? `Vale is installed and ready to use (${valeCheck.version})`
+                        ? `Vale is installed and ready to use (${valeCheck.version})${isSupportedValeVersion(valeCheck.version)
+                            ? ""
+                            : ". Warning: this server requires Vale 3.0 or newer, so some features may not work"}`
                         : "Vale is not installed. Please install it to use Vale linting tools.",
                 }, null, 2),
             },
@@ -248,7 +252,7 @@ server.registerTool("vale_status", {
     };
 });
 server.registerTool("vale_sync", {
-    description: "Download Vale styles and packages by running 'vale sync'. Use this when you see errors about missing styles directories (E100 errors like 'The path does not exist'). This command reads the .vale.ini configuration and downloads the required style packages.",
+    description: "Download Vale styles and packages by running 'vale sync'. Use this when you see errors about missing styles directories (E201 errors like \"Style 'X' isn't on the StylesPath\"). This command reads the .vale.ini configuration and downloads the required style packages.",
     inputSchema: {
         config_path: z
             .string()

@@ -11,6 +11,17 @@ Keep entries short — a few lines, not a report.
 
 ---
 
+## 2026-11-18 — Vale reports errors as JSON on stdout (E201), not E100
+
+Vale 3.27 prints config/runtime errors as a single JSON object
+(`{Line, Path, Text, Code, Span}`) on stdout with exit 2 — not the
+`{file: [issues]}` map. The old code fed that into `normalizeIssues` and
+died with "not iterable", and `isStylesDirectoryError`'s E100 match never
+fired. `parseValeOutput` now detects the object and throws `Code: Text`.
+Missing style / StylesPath is **E201**; E100 is e.g. a nonexistent `--config`
+(sync can't fix that), so only `E201.*StylesPath` triggers the `vale_sync`
+hint. Observed on 3.27.0 only — re-check if Vale changes its codes.
+
 ## 2026-11-18 — Security hardening: execFile, limits, allowed roots
 
 Audit found `vale-runner.ts` built every command as an interpolated string
