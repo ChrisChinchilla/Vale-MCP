@@ -47,7 +47,9 @@ npm run install:global  # npm link, exposes `vale-cli` globally
 ```
 
 `npm test` builds and runs `test/*.test.mjs` against `build/` (needs `vale` on
-PATH). CI also fails if `build/` differs from a fresh build.
+PATH). `test/runner.test.mjs` covers `vale-runner.ts` directly;
+`test/server.test.mjs` spawns the built server and calls tools through the real
+MCP client, so new tools/inputs in `src/index.ts` should get a test there. CI also fails if `build/` differs from a fresh build.
 
 ## Conventions
 

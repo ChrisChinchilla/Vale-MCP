@@ -11,6 +11,15 @@ Keep entries short — a few lines, not a report.
 
 ---
 
+## 2026-11-18 — End-to-end MCP client tests
+
+Added `test/server.test.mjs`: spawns `build/index.js` over stdio with the SDK
+`Client`, so handlers in `index.ts` (error mapping, `isStylesDirectoryError`,
+`toToolResult`, zod validation) are covered, not just the runner. Invalid
+tool input comes back as `isError: true` with "Input validation error: ...
+at <field>" rather than a thrown protocol error (SDK 1.32). Server stderr is
+ignored in tests (`stderr: "ignore"`) because startup logs there. Test-only
+change, so no release needed.
 ## 2026-11-18 — 0.2.1 published via OIDC (verified)
 
 Release v0.2.1 → `publish.yml` succeeded with no token (npm 11.19.1 on

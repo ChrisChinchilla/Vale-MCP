@@ -87,12 +87,12 @@ Release steps (need the repo owner):
 
 Test and CI gaps:
 
-- [ ] No end-to-end test through a real MCP client: the tool handlers in
-      `src/index.ts` (`check_directory`, filters, `toToolResult`, error
-      mapping, `isStylesDirectoryError`) are only covered via the runner
-      functions. Add a stdio client test (SDK `Client` + `StdioClientTransport`).
-- [ ] No tests for `vale_sync`, the timeout/maxBuffer kill path, or the
-      `VALE_ALLOWED_ROOTS` check on `vale_sync`'s `config_path`.
+- [x] End-to-end tests through a real MCP client (`test/server.test.mjs`,
+      SDK `Client` + `StdioClientTransport` against `build/index.js`): tool
+      list, filters, `check_directory`, validation errors, `vale_sync` hint
+      vs unrelated errors, `vale_sync` success, `VALE_ALLOWED_ROOTS` incl.
+      `vale_sync`'s `config_path`.
+- [ ] Still no test for the timeout/maxBuffer kill path.
 - [ ] CI only runs Node 22 and Vale 3.27.0 (pinned URL in `ci.yml`). Add Node
       24 and a Vale-version matrix; bump the pin deliberately.
 - [ ] `isStylesDirectoryError` keys on Vale 3.27.0's E201 wording; re-check on
