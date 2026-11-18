@@ -14,6 +14,8 @@ jobs:
               with:
                   node-version: 22
                   registry-url: "https://registry.npmjs.org"
+            - name: "Check tag matches package.json"
+              run: test "v$(node -p "require('./package.json').version")" = "${{ github.event.release.tag_name }}"
             - run: npm ci
             # prepublishOnly runs the build
             - run: npm publish --provenance --access public

@@ -64,8 +64,9 @@ Ranked by value for effort. Based on a read of `src/` as of v0.1.0.
 ## 4. Distribution and docs
 
 - [ ] First npm publish, then merge the release workflow (`ci/npm-publish`).
-- [ ] Update `CHANGELOG.md` per release; consider `npm version` + release
-      notes automation (e.g. `gh release create --generate-notes`).
+- [x] Release process: `.claude/skills/release` (version bump, CHANGELOG,
+      release PR, GitHub Release -> publish workflow, verification). The
+      publish workflow now fails if the tag doesn't match `package.json`.
 - [ ] Submit to the MCP registry and add `server.json` / `mcpName` once
       published under the final package name.
 - [ ] README: fix the `@iflow-mcp/...` install line (third-party mirror).
