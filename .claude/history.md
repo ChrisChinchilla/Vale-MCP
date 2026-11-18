@@ -11,6 +11,16 @@ Keep entries short — a few lines, not a report.
 
 ---
 
+## 2026-11-18 — Audit of main (ponytail-audit)
+
+Audited `main` after #37-#40; 8 findings (1 must, 3 should, 4 nice), all
+listed with fixes in ROADMAP.md section 6 (A1-A8). Verified by running the
+build: a relative `config_path` fails in every tool (Vale runs with a
+different cwd than the server) and the allowed-roots check resolves it
+differently from Vale. Lesson: any path passed to the `vale` child must be
+absolute, because the child's cwd is never the server's cwd. A1-A4 fixed in
+the "audit fixes" PR; A5-A8 left open.
+
 ## 2026-11-18 — Roadmap clean-up: timeout test, built-ins, block scalars, status
 
 - `VALE_TIMEOUT_MS` env var added mainly so the timeout/kill path is testable

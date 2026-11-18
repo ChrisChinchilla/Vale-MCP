@@ -117,3 +117,48 @@ Release follow-ups:
 - [ ] Resources/prompts: add a rules resource or template (`vale://rules/{style}`)
       if clients want browsable rules; prompts are static text, so check
       real clients render the arguments sensibly (only tested via the SDK client).
+
+## 6. Audit of `main` (2026-11-18, after PRs #37-#40)
+
+Full-repo audit; findings numbered as reported. Each has a concrete failing
+case. Not checked: Windows, Vale other than 3.27, how real MCP clients render
+prompts, the readme and CI files beyond the quoted lines.
+
+Must fix:
+
+- [ ] **A1. Relative `config_path` breaks every tool.** Vale runs from the
+      file's/config's/target dir, so `--config=fixtures/.vale.ini` is read
+      from the wrong folder (`E100 ... does not exist`) in `list_rules`,
+      `explain_rule`, `vale_sync`, `check_file`, `check_directory`,
+      `check_text`. It also lets `VALE_ALLOWED_ROOTS` and Vale disagree on
+      which file a relative path means (roots `/docs`, server cwd
+      `/docs/proj/deep`, file in `/docs`, config `../../../outside.ini`).
+      Fix: `path.resolve` the config path once before checking and passing it;
+      add a relative-path test.
+
+Should fix:
+
+- [ ] **A2. "Vale not installed" is cached forever** (`checkValeInstalled`).
+      Install Vale after the server starts and `vale_status` still says
+      missing until restart, contradicting the startup message.
+      `clearValeInstallCache` is never called. Fix: cache successes only.
+- [ ] **A3. Error replies include `error.stack`** (absolute local paths) in
+      every failure. Fix: only with `--debug`.
+- [ ] **A4. Large directories fail with the wrong message and no results.**
+      Vale output is capped at 10 MB; hitting it says "timed out or produced
+      too much output", and `max_issues`/`min_severity` run after Vale has
+      printed everything. Fix: separate maxBuffer message; pass
+      `--minAlertLevel` to Vale when `min_severity` is set.
+
+Nice to have:
+
+- [ ] **A5.** `assertPathAllowed` wrongly denies folders named `..something`
+      (`rel.startsWith("..")`); use `rel === ".." || rel.startsWith(".." + sep)`.
+- [ ] **A6.** `publish.yml` interpolates `github.event.release.tag_name`
+      straight into a shell line; pass it via `env:` instead (low risk: only
+      release creators control it).
+- [ ] **A7.** Delete dead code (~35 lines): `stripCodeFence`, unused
+      `ValeError` type, the ASCII start-up banner in `main()`.
+- [ ] **A8.** Merge the six copies of the "is Vale installed?" check in the
+      tool handlers (`index.ts`) into one wrapper (~20 lines).
+
