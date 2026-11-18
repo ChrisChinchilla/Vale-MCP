@@ -3,8 +3,9 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import type { CheckFileResult } from "./types.js";
 import { z } from "zod";
-import { checkValeInstalled, checkFile, checkText, syncValeStyles, isSupportedValeVersion } from "./vale-runner.js";
+import { checkValeInstalled, checkFile, checkText, syncValeStyles, checkDirectory, isSupportedValeVersion } from "./vale-runner.js";
 import {
   loadConfig,
   verifyConfigFile,
@@ -245,6 +246,34 @@ For more information, see: https://vale.sh/docs/topics/packages/`,
   };
 }
 
+// Result-filtering inputs shared by all check tools
+const filterInputSchema = {
+  min_severity: z
+    .enum(["suggestion", "warning", "error"])
+    .optional()
+    .describe("Only report issues at or above this severity. Defaults to all."),
+  max_issues: z
+    .number()
+    .int()
+    .positive()
+    .optional()
+    .describe(
+      "Return at most this many issues (summary still counts all of them). Use to keep results small for large files."
+    ),
+};
+
+function toToolResult(result: CheckFileResult): CallToolResult {
+  return {
+    content: [{ type: "text", text: result.formatted }],
+    structuredContent: {
+      file: result.file,
+      issues: result.issues,
+      summary: result.summary,
+      truncated: result.truncated ?? false,
+    },
+  };
+}
+
 // Initialize the MCP server
 const server = new McpServer({
   name: "vale-mcp",
@@ -376,13 +405,14 @@ server.registerTool(
         .describe(
           "Optional path to .vale.ini file. If not provided, Vale will search for .vale.ini starting from the file's directory and moving upward through parent directories."
         ),
+      ...filterInputSchema,
     },
     annotations: {
       readOnlyHint: true,
       openWorldHint: false,
     },
   },
-  async ({ path: filePath, config_path }) => {
+  async ({ path: filePath, config_path, min_severity, max_issues }) => {
     debug(`check_file called - path: ${filePath}, config_path: ${config_path}`);
 
     const valeCheck = await checkValeInstalled();
@@ -393,23 +423,14 @@ server.registerTool(
     try {
       // Only pass config_path if explicitly provided by the user
       // This allows Vale to use its natural upward search from the file's directory
-      const result = await checkFile(filePath, config_path);
+      const result = await checkFile(filePath, config_path, {
+        minSeverity: min_severity,
+        maxIssues: max_issues,
+      });
 
       debug(`check_file result - file: ${result.file}, issues found: ${result.issues.length}, errors: ${result.summary.errors}, warnings: ${result.summary.warnings}, suggestions: ${result.summary.suggestions}`);
 
-      return {
-        content: [
-          {
-            type: "text",
-            text: result.formatted,
-          },
-        ],
-        structuredContent: {
-          file: result.file,
-          issues: result.issues,
-          summary: result.summary,
-        },
-      };
+      return toToolResult(result);
     } catch (error) {
       return handleValeLintError(error);
     }
@@ -435,13 +456,14 @@ server.registerTool(
         .describe(
           "Optional path to .vale.ini file. If not provided, uses the server's configured path or searches in the current directory."
         ),
+      ...filterInputSchema,
     },
     annotations: {
       readOnlyHint: true,
       openWorldHint: false,
     },
   },
-  async ({ text, text_file_ext, config_path }) => {
+  async ({ text, text_file_ext, config_path, min_severity, max_issues }) => {
     debug(`check_text called - text length: ${text?.length}, text_file_ext: ${text_file_ext}, config_path: ${config_path}`);
 
     const valeCheck = await checkValeInstalled();
@@ -453,23 +475,55 @@ server.registerTool(
       // Use the provided config_path if given, otherwise fall back to the
       // server's configured path since there's no file directory to search from
       const effectiveConfigPath = config_path !== undefined ? config_path : valeConfigPath;
-      const result = await checkText(text, text_file_ext, effectiveConfigPath);
+      const result = await checkText(text, text_file_ext, effectiveConfigPath, {
+        minSeverity: min_severity,
+        maxIssues: max_issues,
+      });
 
       debug(`check_text result - issues found: ${result.issues.length}, errors: ${result.summary.errors}, warnings: ${result.summary.warnings}, suggestions: ${result.summary.suggestions}`);
 
-      return {
-        content: [
-          {
-            type: "text",
-            text: result.formatted,
-          },
-        ],
-        structuredContent: {
-          file: result.file,
-          issues: result.issues,
-          summary: result.summary,
-        },
-      };
+      return toToolResult(result);
+    } catch (error) {
+      return handleValeLintError(error);
+    }
+  }
+);
+
+server.registerTool(
+  "check_directory",
+  {
+    description:
+      "Lint every file Vale supports in a directory (recursively) against Vale style rules. Returns issues with their file and line, plus a combined summary. Use min_severity and max_issues to keep results small.",
+    inputSchema: {
+      path: z.string().describe("Absolute or relative path to the directory to check"),
+      config_path: z
+        .string()
+        .optional()
+        .describe(
+          "Optional path to .vale.ini file. If not provided, Vale will search for .vale.ini starting from the directory and moving upward."
+        ),
+      ...filterInputSchema,
+    },
+    annotations: {
+      readOnlyHint: true,
+      openWorldHint: false,
+    },
+  },
+  async ({ path: dirPath, config_path, min_severity, max_issues }) => {
+    debug(`check_directory called - path: ${dirPath}, config_path: ${config_path}`);
+
+    const valeCheck = await checkValeInstalled();
+    if (!valeCheck.installed) {
+      return createValeNotInstalledResponse();
+    }
+
+    try {
+      const result = await checkDirectory(dirPath, config_path, {
+        minSeverity: min_severity,
+        maxIssues: max_issues,
+      });
+      debug(`check_directory result - issues found: ${result.summary.total}`);
+      return toToolResult(result);
     } catch (error) {
       return handleValeLintError(error);
     }

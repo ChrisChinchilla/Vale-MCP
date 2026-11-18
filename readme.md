@@ -274,7 +274,7 @@ You can specify a Vale configuration file using the `VALE_CONFIG_PATH` environme
 
 ### Restricting file access
 
-By default `check_file` can read any file the server process can. To limit it,
+By default `check_file` and `check_directory` can read any file the server process can. To limit it,
 set `VALE_ALLOWED_ROOTS` to one or more directories (separated by `:` on
 macOS/Linux, `;` on Windows). Files and `config_path` values outside those
 directories, including via symlinks, are rejected:
@@ -347,6 +347,9 @@ Lint a file at a specific path against Vale style rules.
 **Parameters:**
 
 - `path` (required): Absolute or relative path to the file
+- `config_path` (optional): Path to a `.vale.ini` to use
+- `min_severity` (optional): `suggestion`, `warning` or `error`; hides issues below it
+- `max_issues` (optional): Return at most this many issues (the summary still counts all)
 
 **Returns:**
 
@@ -358,6 +361,25 @@ Lint a file at a specific path against Vale style rules.
 **Example usage in AI:**
 
 > "Check the README.md file for style issues"
+
+Issues include Vale's suggested fix (`action`) when the rule defines one, for
+example substitution rules with `action: {name: replace}`. Vale only
+reports actions for rules that declare them.
+
+### `check_directory`
+
+Lint every file Vale supports in a directory, recursively.
+
+**Parameters:**
+
+- `path` (required): Absolute or relative path to the directory
+- `config_path`, `min_severity`, `max_issues` (optional): as for `check_file`
+
+**Returns:** the same structure as `check_file`, with a `file` on each issue.
+
+**Example usage in AI:**
+
+> "Check everything in the docs folder, errors only"
 
 ### `check_text`
 
@@ -373,6 +395,7 @@ Lint AI-generated text against Vale style rules before it's written to a file or
     such as: "md", ".md", "txt", ".txt", or "docx"
 - `config_path` (optional): The path to the config file to use.
     If not specified, the server's configured path is used.
+- `min_severity`, `max_issues` (optional): as for `check_file`
 
 **Returns:**
 

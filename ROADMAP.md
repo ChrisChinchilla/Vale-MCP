@@ -48,11 +48,11 @@ Ranked by value for effort. Based on a read of `src/` as of v0.1.0.
 
 - [ ] **`list_rules` / `explain_rule`**: wrap `vale ls-config` and
       `vale ls-vars`; lets an assistant explain *why* a rule fired.
-- [ ] **`check_directory` / glob**: lint many files in one call with a
+- [x] **`check_directory` / glob**: lint many files in one call with a
       combined summary (Vale already accepts directories).
-- [ ] **Severity filter** (`min_alert_level`) and `max_issues` on check tools
+- [x] **Severity filter** (`min_alert_level`) and `max_issues` on check tools
       to keep results small in context.
-- [ ] **Suggested fixes**: expose `Action` data (Vale's `suggest` actions)
+- [x] **Suggested fixes**: expose `Action` data (Vale's `suggest` actions)
       in `structuredContent` so clients can offer one-click replacements.
 - [ ] **MCP resources/prompts**: expose the active `.vale.ini` as a resource;
       add a "fix all issues in this file" prompt.
@@ -67,6 +67,5 @@ Ranked by value for effort. Based on a read of `src/` as of v0.1.0.
       notes automation (e.g. `gh release create --generate-notes`).
 - [ ] Submit to the MCP registry and add `server.json` / `mcpName` once
       published under the final package name.
-- [ ] README: fix the `@iflow-mcp/...` install line (third-party mirror) and
-      the `vale-cli` vs `vale-mcp` bin naming confusion — add a `vale-mcp`
-      bin alias alongside `vale-cli`.
+- [ ] README: fix the `@iflow-mcp/...` install line (third-party mirror).
+      (`vale-mcp` bin alias added alongside `vale-cli`.)

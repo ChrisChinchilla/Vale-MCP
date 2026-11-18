@@ -23,6 +23,14 @@
 
 ### Added
 
+- **`check_directory` tool:** lint a directory recursively with a combined
+  summary; each issue includes its `file`.
+- **`min_severity` and `max_issues` inputs** on `check_file`, `check_text` and
+  `check_directory`. Results report `truncated` when `max_issues` cut them off.
+- **Suggested fixes:** issues include Vale's `action` (e.g. `replace` with
+  candidates) when the rule defines one.
+- `vale-mcp` bin alias, so `npx vale-mcp` and `vale-mcp` after a global
+  install work (`vale-cli` still works).
 - `vale_status` warns when the installed Vale is older than 3.0.
 - `VALE_ALLOWED_ROOTS` environment variable to restrict which files and
   config paths the tools may access (symlinks are resolved).
