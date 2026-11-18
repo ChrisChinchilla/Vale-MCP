@@ -57,19 +57,19 @@ Ranked by value for effort. Based on a read of `src/` as of v0.1.0.
       in `structuredContent` so clients can offer one-click replacements.
 - [x] **MCP resources/prompts**: `vale://config` resource; `fix_style_issues`,
       `review_text`, `explain_style_rule` prompts.
-- [ ] **Vale in `vale_status`**: show active config path and installed
+- [x] **Vale in `vale_status`**: show active config path and installed
       packages (what `valeConfigPath` resolved to) — currently only in logs.
 - [ ] Windows support check: `execFile` change plus `vale.exe` lookup.
 
 ## 4. Distribution and docs
 
-- [ ] First npm publish, then merge the release workflow (`ci/npm-publish`).
+- [x] First npm publish and release workflow (done: 0.2.0 manual, 0.2.1 via OIDC).
 - [x] Release process: `.claude/skills/release` (version bump, CHANGELOG,
       release PR, GitHub Release -> publish workflow, verification). The
       publish workflow now fails if the tag doesn't match `package.json`.
 - [ ] Submit to the MCP registry and add `server.json` / `mcpName` once
       published under the final package name.
-- [ ] README: fix the `@iflow-mcp/...` install line (third-party mirror).
+- [x] README: fix the `@iflow-mcp/...` install line (third-party mirror).
       (`vale-mcp` bin alias added alongside `vale-cli`.)
 
 ## 5. Follow-ups from the hardening/feature PRs (#24, #25, #26)
@@ -92,7 +92,8 @@ Test and CI gaps:
       list, filters, `check_directory`, validation errors, `vale_sync` hint
       vs unrelated errors, `vale_sync` success, `VALE_ALLOWED_ROOTS` incl.
       `vale_sync`'s `config_path`.
-- [ ] Still no test for the timeout/maxBuffer kill path.
+- [x] Timeout kill path tested (`VALE_TIMEOUT_MS=1`); the maxBuffer overflow
+      path shares the same branch but has no dedicated test.
 - [ ] CI only runs Node 22 and Vale 3.27.0 (pinned URL in `ci.yml`). Add Node
       24 and a Vale-version matrix; bump the pin deliberately.
 - [ ] `isStylesDirectoryError` keys on Vale 3.27.0's E201 wording; re-check on
@@ -102,9 +103,9 @@ Test and CI gaps:
       and `config_path` are checked.
 - [ ] `check_directory` has no file-count cap beyond the 60s timeout and 10 MB
       output limit; consider a `--glob` input.
-- [ ] `list_rules`: parse multi-line YAML values (needs a YAML parser or a
-      smarter reader), cap/paginate very large rule sets, and list the
-      built-in `Vale.*` rules from docs rather than skipping them.
+- [x] `list_rules`: block-scalar YAML values, `max_rules` cap, built-in
+      `Vale.*` rules listed. Remaining: flow/multi-line quoted YAML values
+      aren't parsed (no YAML library), and there's no offset/pagination.
 
 Release follow-ups:
 
@@ -112,7 +113,7 @@ Release follow-ups:
       provenance). Its GitHub release/tag was left as is.
 - [x] Trusted publishing verified: 0.2.1 published via OIDC with provenance.
 - [ ] Delete the unused `NPM_TOKEN` repo secret.
-- [ ] Consider `npm deprecate vale-mcp@0.1.0` (pre-security-fix).
+- [x] `npm deprecate vale-mcp@0.1.0` (done by the repo owner).
 - [ ] Resources/prompts: add a rules resource or template (`vale://rules/{style}`)
       if clients want browsable rules; prompts are static text, so check
       real clients render the arguments sensibly (only tested via the SDK client).

@@ -4,7 +4,7 @@ import * as fsSync from "fs";
 import * as path from "path";
 import { assertPathAllowed, PathNotAllowedError } from "./config.js";
 // Limits so a huge input or a hung Vale process can't wedge the server
-const VALE_TIMEOUT_MS = 60_000;
+const VALE_TIMEOUT_MS = 60_000; // override with the VALE_TIMEOUT_MS env var
 const VALE_SYNC_TIMEOUT_MS = 300_000; // sync downloads packages
 const VALE_MAX_BUFFER = 10 * 1024 * 1024;
 export const MAX_TEXT_BYTES = 1024 * 1024;
@@ -33,7 +33,7 @@ function runVale(args, options = {}) {
         const child = execFile("vale", args, {
             cwd: options.cwd,
             encoding: "utf-8",
-            timeout: options.timeout ?? VALE_TIMEOUT_MS,
+            timeout: options.timeout ?? (Number(process.env.VALE_TIMEOUT_MS) || VALE_TIMEOUT_MS),
             maxBuffer: VALE_MAX_BUFFER,
         }, (error, stdout, stderr) => {
             if (error && (error.killed || (options.requireStdout !== false && !stdout))) {
@@ -432,16 +432,30 @@ async function loadLsConfig(configPath) {
     return parseValeOutput(stdout);
 }
 /**
- * Reads the top-level scalar keys of a rule's YAML.
- * shortcut: line-based, so folded/multi-line values (message: >) are
- * returned as empty; upgrade to a YAML parser if that matters.
+ * Reads the top-level scalar keys of a rule's YAML, including block scalars
+ * (`message: >` folded, `message: |` literal).
+ * shortcut: line-based, not a YAML parser; flow/quoted values spanning several
+ * lines and anchors/aliases are not handled. Upgrade to a YAML library if
+ * rules in the wild need them.
  */
 function parseRuleYaml(source) {
     const fields = {};
-    for (const line of source.split(/\r?\n/)) {
-        const m = line.match(/^(extends|message|level|link|description):\s*(.*?)\s*$/);
-        if (m && !(m[1] in fields))
+    const lines = source.split(/\r?\n/);
+    for (let i = 0; i < lines.length; i++) {
+        const m = lines[i].match(/^(extends|message|level|link|description):\s*(.*?)\s*$/);
+        if (!m || m[1] in fields)
+            continue;
+        const block = m[2].match(/^([>|])[+-]?$/);
+        if (block) {
+            const body = [];
+            while (i + 1 < lines.length && (/^\s+\S/.test(lines[i + 1]) || lines[i + 1].trim() === "")) {
+                body.push(lines[++i].trim());
+            }
+            fields[m[1]] = (block[1] === ">" ? body.join(" ").replace(/\s+/g, " ") : body.join("\n")).trim();
+        }
+        else {
             fields[m[1]] = m[2].replace(/^(["'])(.*)\1$/, "$2");
+        }
     }
     return fields;
 }
@@ -486,10 +500,44 @@ function buildRuleInfo(style, rule, fields, config) {
     };
 }
 /**
- * Lists the rules of the styles the active config uses (optionally one style).
- * Vale's built-in "Vale" style has no files on disk, so it is not listed.
+ * Vale's built-in "Vale" style has no files on disk; these are described from
+ * https://vale.sh/docs/styles#built-in-style. Levels aren't listed because
+ * they come from the user's config.
  */
-export async function listRules(configPath, style) {
+const BUILTIN_VALE_RULES = {
+    Avoid: {
+        extends: "existence",
+        description: "Flags terms in the vocabulary's reject list (vocabularies/<Name>/reject.txt).",
+    },
+    Repetition: {
+        extends: "repetition",
+        description: "Flags accidentally repeated words, such as \"the the\".",
+    },
+    Spelling: {
+        extends: "spelling",
+        description: "Flags misspelled words using Vale's dictionaries plus the vocabulary's accept list.",
+    },
+    Terms: {
+        extends: "substitution",
+        description: "Enforces the casing and spelling of terms in the vocabulary's accept list.",
+    },
+};
+const BUILTIN_DOCS = "https://vale.sh/docs/styles#built-in-style";
+function builtinRule(ruleName, config) {
+    const b = BUILTIN_VALE_RULES[ruleName];
+    if (!b)
+        return undefined;
+    return {
+        ...buildRuleInfo("Vale", ruleName, { extends: b.extends, description: b.description, link: BUILTIN_DOCS }, config),
+        builtin: true,
+    };
+}
+/**
+ * Lists the rules of the styles the active config uses (optionally one style).
+ * Vale's built-in "Vale" style is listed from documentation, since it has no
+ * files, unless the user has their own style directory named "Vale".
+ */
+export async function listRules(configPath, style, maxRules) {
     const config = await loadLsConfig(configPath);
     const paths = config.Paths ?? [];
     const active = new Set([
@@ -503,15 +551,21 @@ export async function listRules(configPath, style) {
     const rules = [];
     for (const s of styles) {
         const dir = await findStyleDir(paths, s);
-        if (!dir)
+        if (!dir) {
+            if (s === "Vale") {
+                for (const name of Object.keys(BUILTIN_VALE_RULES))
+                    rules.push(builtinRule(name, config));
+            }
             continue;
+        }
         await assertPathAllowed(dir);
         for (const file of (await fs.readdir(dir)).filter((f) => /\.ya?ml$/.test(f)).sort()) {
             const fields = parseRuleYaml(await fs.readFile(path.join(dir, file), "utf-8"));
             rules.push(buildRuleInfo(s, file.replace(/\.ya?ml$/, ""), fields, config));
         }
     }
-    return rules;
+    const truncated = maxRules !== undefined && rules.length > maxRules;
+    return { rules: truncated ? rules.slice(0, maxRules) : rules, total: rules.length, truncated };
 }
 /**
  * Returns one rule's YAML definition and where it is active.
@@ -527,9 +581,11 @@ export async function explainRule(rule, configPath) {
     const ruleName = rule.slice(dot + 1);
     const config = await loadLsConfig(configPath);
     const dir = await findStyleDir(config.Paths ?? [], style);
-    const notFound = () => new Error(style === "Vale"
-        ? `${rule} is one of Vale's built-in rules, which have no definition file. See https://vale.sh/docs/styles#built-in-style`
-        : `Rule ${rule} was not found in any StylesPath of the active config.`);
+    const notFound = () => new Error(`Rule ${rule} was not found in any StylesPath of the active config.`);
+    // Built-in Vale.* rules have no file; describe them unless the user has their own "Vale" style dir
+    const builtin = !dir && style === "Vale" ? builtinRule(ruleName, config) : undefined;
+    if (builtin)
+        return { rule: builtin };
     if (!dir)
         throw notFound();
     let file;
@@ -553,5 +609,47 @@ export async function explainRule(rule, configPath) {
         file,
         definition,
     };
+}
+/**
+ * Describes the Vale setup in use: config path, declared packages and the
+ * styles actually present on the StylesPath. Best-effort: anything that can't
+ * be read (no config, access denied) is left empty rather than failing status.
+ */
+export async function getValeSetup(configPath) {
+    const info = { configPath, packages: [], installedStyles: [] };
+    if (configPath) {
+        try {
+            await assertPathAllowed(configPath);
+            const ini = await fs.readFile(configPath, "utf-8");
+            const m = ini.match(/^\s*Packages\s*=\s*(.+)$/m);
+            if (m)
+                info.packages = m[1].split(",").map((p) => p.trim()).filter(Boolean);
+        }
+        catch {
+            // unreadable or outside VALE_ALLOWED_ROOTS: report no packages
+        }
+    }
+    try {
+        const config = await loadLsConfig(configPath);
+        const found = new Set();
+        for (const base of config.Paths ?? []) {
+            try {
+                await assertPathAllowed(base);
+                for (const e of await fs.readdir(base, { withFileTypes: true })) {
+                    // "config" holds vocabularies and other non-style data
+                    if (e.isDirectory() && e.name !== "config")
+                        found.add(e.name);
+                }
+            }
+            catch {
+                // missing or not allowed
+            }
+        }
+        info.installedStyles = [...found].sort();
+    }
+    catch {
+        // no usable config
+    }
+    return info;
 }
 //# sourceMappingURL=vale-runner.js.map

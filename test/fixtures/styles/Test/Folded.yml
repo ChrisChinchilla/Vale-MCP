@@ -1,0 +1,10 @@
+extends: existence
+message: >
+  Folded message
+  across two lines for '%s'.
+description: |
+  Literal line one
+  literal line two
+level: suggestion
+tokens:
+  - zzzzunlikelytoken

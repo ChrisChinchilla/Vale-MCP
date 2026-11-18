@@ -135,7 +135,8 @@ test("list_rules and explain_rule work through the server", async () => {
   const config_path = path.join(fixtures, ".vale.ini");
   const list = await client.callTool({ name: "list_rules", arguments: { config_path } });
   assert.ok(!list.isError, text(list));
-  assert.deepEqual(list.structuredContent.rules.map((r) => r.name), ["Test.Foo", "Test.Swap"]);
+  assert.deepEqual(list.structuredContent.rules.map((r) => r.name), ["Test.Folded", "Test.Foo", "Test.Swap"]);
+  assert.equal(list.structuredContent.total, 3);
   assert.match(text(list), /\*\*Test\.Swap\*\* \(error, substitution\)/);
 
   const explain = await client.callTool({ name: "explain_rule", arguments: { rule: "Test.Swap", config_path } });
@@ -193,4 +194,25 @@ test("lists and renders prompts", async () => {
   assert.match(explain.messages[0].content.text, /explain_rule.*write-good\.Passive/);
 
   await assert.rejects(client.getPrompt({ name: "fix_style_issues", arguments: {} }), /path/);
+});
+
+test("list_rules max_rules and built-in explain work through the server", async () => {
+  const config_path = path.join(fixtures, "disabled.ini");
+  const capped = await client.callTool({ name: "list_rules", arguments: { config_path, max_rules: 2 } });
+  assert.equal(capped.structuredContent.rules.length, 2);
+  assert.equal(capped.structuredContent.truncated, true);
+  assert.match(text(capped), /first 2 of 7/);
+
+  const builtin = await client.callTool({ name: "explain_rule", arguments: { rule: "Vale.Repetition", config_path } });
+  assert.ok(!builtin.isError, text(builtin));
+  assert.match(text(builtin), /\(built-in\)/);
+  assert.match(text(builtin), /repeated words/);
+});
+
+test("vale_status includes config, packages and installed styles", async () => {
+  const r = await client.callTool({ name: "vale_status", arguments: {} });
+  const status = JSON.parse(text(r));
+  assert.match(status.config_path, /fixtures[\\/]\.vale\.ini$/);
+  assert.deepEqual(status.packages, []);
+  assert.ok(status.installed_styles.includes("Test"));
 });

@@ -2,7 +2,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { checkValeInstalled, checkFile, checkText, syncValeStyles, checkDirectory, listRules, explainRule, isSupportedValeVersion } from "./vale-runner.js";
+import { checkValeInstalled, checkFile, checkText, syncValeStyles, checkDirectory, listRules, explainRule, getValeSetup, isSupportedValeVersion } from "./vale-runner.js";
 import { loadConfig, verifyConfigFile, resolveConfigPath, findValeIniInWorkingDir, assertPathAllowed, } from "./config.js";
 import * as path from "path";
 import * as fs from "fs";
@@ -43,6 +43,7 @@ Environment variables:
   VALE_CONFIG_PATH    Path to specific .vale.ini file (overrides auto-detection)
   VALE_ALLOWED_ROOTS  Directories (path-delimiter separated) that check_file and
                       config paths are restricted to. Unset means no restriction.
+  VALE_TIMEOUT_MS     Timeout for each Vale run in milliseconds (default 60000)
 
 Example:
   # Use specific config file
@@ -245,7 +246,7 @@ const server = new McpServer({
     version: VERSION,
 });
 server.registerTool("vale_status", {
-    description: "Check if Vale (vale.sh) is installed and accessible. Use this first if other Vale tools fail. Returns installation status, version if available, and installation instructions for the current platform.",
+    description: "Check if Vale (vale.sh) is installed and accessible. Use this first if other Vale tools fail. Returns installation status, version if available, installation instructions for the current platform, and (when installed) the active config path, declared packages and installed styles.",
     annotations: {
         readOnlyHint: true,
         openWorldHint: false,
@@ -254,6 +255,7 @@ server.registerTool("vale_status", {
     debug("Checking Vale installation status...");
     const valeCheck = await checkValeInstalled();
     debug(`Vale installed: ${valeCheck.installed}, version: ${valeCheck.version}`);
+    const setup = valeCheck.installed ? await getValeSetup(valeConfigPath) : undefined;
     return {
         content: [
             {
@@ -262,6 +264,9 @@ server.registerTool("vale_status", {
                     installed: valeCheck.installed,
                     version: valeCheck.version,
                     platform: process.platform,
+                    config_path: setup ? setup.configPath ?? null : undefined,
+                    packages: setup?.packages,
+                    installed_styles: setup?.installedStyles,
                     installation_instructions: valeCheck.installed
                         ? null
                         : getInstallationInstructions(),
@@ -440,12 +445,18 @@ server.registerTool("check_directory", {
     }
 });
 server.registerTool("list_rules", {
-    description: "List the Vale rules (style checks) available in the active config, with each rule's name (Style.Rule, as shown in lint results), level, check type, message and whether it is enabled. Use it to see what Vale will check, or to find a rule to explain. Vale's built-in 'Vale' style (spelling etc.) has no rule files and is not listed.",
+    description: "List the Vale rules (style checks) available in the active config, with each rule's name (Style.Rule, as shown in lint results), level, check type, message and whether it is enabled. Use it to see what Vale will check, or to find a rule to explain. Vale's built-in 'Vale' style (spelling etc.) is listed from documentation.",
     inputSchema: {
         style: z
             .string()
             .optional()
             .describe("Only list rules from this style (e.g. 'write-good'). Defaults to all styles the config uses."),
+        max_rules: z
+            .number()
+            .int()
+            .positive()
+            .optional()
+            .describe("Return at most this many rules (the total is still reported). Use for large styles."),
         config_path: z
             .string()
             .optional()
@@ -455,29 +466,29 @@ server.registerTool("list_rules", {
         readOnlyHint: true,
         openWorldHint: false,
     },
-}, async ({ style, config_path }) => {
+}, async ({ style, max_rules, config_path }) => {
     debug(`list_rules called - style: ${style}, config_path: ${config_path}`);
     const valeCheck = await checkValeInstalled();
     if (!valeCheck.installed) {
         return createValeNotInstalledResponse();
     }
     try {
-        const rules = await listRules(config_path ?? valeConfigPath, style);
+        const { rules, total, truncated } = await listRules(config_path ?? valeConfigPath, style, max_rules);
         const lines = rules.map((r) => {
             const enabled = r.sections.some((s) => s.enabled) ? "" : " [disabled]";
             const detail = [r.level, r.extends].filter(Boolean).join(", ");
-            return `- **${r.name}**${enabled}${detail ? ` (${detail})` : ""}${r.message ? `: ${r.message}` : ""}`;
+            return `- **${r.name}**${r.builtin ? " [built-in]" : ""}${enabled}${detail ? ` (${detail})` : ""}${r.message ? `: ${r.message}` : ""}`;
         });
         return {
             content: [
                 {
                     type: "text",
                     text: rules.length
-                        ? `## Vale rules (${rules.length})\n\n${lines.join("\n")}\n\nUse \`explain_rule\` with a rule name for its full definition.`
-                        : "No rule files found for the styles in this config. (Vale's built-in `Vale` style has no files; run `vale_sync` if packages are missing.)",
+                        ? `## Vale rules (${truncated ? `first ${rules.length} of ${total}` : total})\n\n${lines.join("\n")}\n\nUse \`explain_rule\` with a rule name for its full definition.`
+                        : "No rule files found for the styles in this config. (Run `vale_sync` if packages are missing.)",
                 },
             ],
-            structuredContent: { rules },
+            structuredContent: { rules, total, truncated },
         };
     }
     catch (error) {
@@ -512,7 +523,7 @@ server.registerTool("explain_rule", {
             content: [
                 {
                     type: "text",
-                    text: `## ${result.rule.name}\n\n${result.rule.description ? `${result.rule.description}\n\n` : ""}**Active in:**\n${where || "- not used by the active config"}\n\n**Definition** (\`${result.file}\`):\n\`\`\`yaml\n${result.definition.trimEnd()}\n\`\`\`${result.rule.link ? `\n\nMore info: ${result.rule.link}` : ""}`,
+                    text: `## ${result.rule.name}${result.rule.builtin ? " (built-in)" : ""}\n\n${result.rule.description ? `${result.rule.description}\n\n` : ""}**Active in:**\n${where || "- not used by the active config"}${result.definition ? `\n\n**Definition** (\`${result.file}\`):\n\`\`\`yaml\n${result.definition.trimEnd()}\n\`\`\`` : ""}${result.rule.link ? `\n\nMore info: ${result.rule.link}` : ""}`,
                 },
             ],
             structuredContent: { rule: result.rule, file: result.file, definition: result.definition },

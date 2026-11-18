@@ -39,10 +39,10 @@ This is the recommended approach for most users and is what the quick install ba
 
 ### Global install via npm
 
-Install the `vale-mcp` package globally to create a system-wide `vale-cli` command:
+Install the `vale-mcp` package globally to create system-wide `vale-mcp` and `vale-cli` commands (both run the same server):
 
 ```bash
-npm i @iflow-mcp/chrischinchilla-vale-mcp
+npm install -g vale-mcp
 ```
 
 To uninstall:
@@ -286,7 +286,8 @@ directories, including via symlinks, are rejected:
 ```
 
 Vale runs have a 60 second timeout (5 minutes for `vale_sync`), and
-`check_text` accepts up to 1 MB of text.
+`check_text` accepts up to 1 MB of text. Set `VALE_TIMEOUT_MS` (milliseconds)
+to change the 60 second limit, for example on very large directories.
 
 ## Usage examples
 
@@ -311,6 +312,10 @@ Check if you have installed Vale and can access it.
 - Installation status (installed/not installed)
 - Vale version (if installed)
 - Platform-specific installation instructions (if not installed)
+- When installed: the active config path, the packages declared in its
+  `Packages` line, and the style folders found on the StylesPath
+  (`installed_styles`). A declared package missing from the installed styles
+  usually means `vale_sync` hasn't been run.
 
 **Example usage in AI:**
 
@@ -388,13 +393,15 @@ List the rules (style checks) available in the active Vale config.
 **Parameters:**
 
 - `style` (optional): Only list rules from this style, such as `write-good`
+- `max_rules` (optional): Return at most this many rules; the total is still reported
 - `config_path` (optional): Path to a `.vale.ini` to use
 
 **Returns:** each rule's name (`Style.Rule`, as shown in lint results),
 level, check type, message and where it's enabled or disabled. Vale's
-built-in `Vale` style (spelling and similar) has no rule files and isn't
-listed. Only the first line of each rule's `message`, `description` and
-`link` is read; multi-line YAML values come back empty.
+built-in `Vale` style (`Vale.Spelling`, `Vale.Terms` and so on) is listed
+from Vale's documentation, marked built-in, since it has no rule files.
+Rule YAML is read line by line (including `>` and `|` block values) rather
+than with a full YAML parser.
 
 **Example usage in AI:**
 
@@ -412,6 +419,9 @@ Show one rule's full YAML definition and where it's active.
 **Example usage in AI:**
 
 > "Why did Vale flag `write-good.Passive`, and how do I fix it?"
+
+Built-in `Vale.*` rules come back with a description and a link instead of a
+YAML definition.
 
 ### `check_text`
 

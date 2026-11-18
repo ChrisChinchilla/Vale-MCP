@@ -100,13 +100,34 @@ export interface RuleInfo {
   description?: string;
   link?: string;
   sections: RuleSection[];
+  /** True for Vale's built-in rules, which have no file on disk */
+  builtin?: boolean;
 }
 
 export interface ExplainRuleResult {
   rule: RuleInfo;
-  file: string;
-  /** The rule's YAML source */
-  definition: string;
+  /** Absent for built-in rules */
+  file?: string;
+  /** The rule's YAML source; absent for built-in rules */
+  definition?: string;
+}
+
+export interface ListRulesResult {
+  rules: RuleInfo[];
+  /** Rules found before max_rules was applied */
+  total: number;
+  truncated: boolean;
+}
+
+/**
+ * Details of the Vale setup the server is using
+ */
+export interface ValeSetupInfo {
+  configPath?: string;
+  /** Packages declared in the config's Packages line */
+  packages: string[];
+  /** Style directories found on the StylesPath */
+  installedStyles: string[];
 }
 
 /**
