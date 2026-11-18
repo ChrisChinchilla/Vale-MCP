@@ -4,6 +4,13 @@ updates:
       directory: "/"
       schedule:
           interval: "weekly"
+      ignore:
+          # Stay on TypeScript 5.x (7 breaks type resolution, see .claude/history.md)
+          # and on @types/node matching engines (>=22 -> 24 types)
+          - dependency-name: "typescript"
+            update-types: ["version-update:semver-major"]
+          - dependency-name: "@types/node"
+            update-types: ["version-update:semver-major"]
     - package-ecosystem: "github-actions"
       directory: "/"
       schedule:
