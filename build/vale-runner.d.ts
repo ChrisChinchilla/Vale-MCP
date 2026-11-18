@@ -1,4 +1,4 @@
-import { CheckFileResult } from "./types.js";
+import { CheckFileResult, CheckOptions } from "./types.js";
 export declare const MAX_TEXT_BYTES: number;
 /**
  * Checks if Vale is installed and accessible (with caching)
@@ -29,9 +29,13 @@ export declare function isSupportedValeVersion(versionOutput?: string): boolean;
 /**
  * Runs Vale on a file at a specific path
  */
-export declare function checkFile(filePath: string, configPath?: string): Promise<CheckFileResult>;
+export declare function checkFile(filePath: string, configPath?: string, options?: CheckOptions): Promise<CheckFileResult>;
+/**
+ * Runs Vale on every supported file in a directory (recursively)
+ */
+export declare function checkDirectory(dirPath: string, configPath?: string, options?: CheckOptions): Promise<CheckFileResult>;
 /**
  * Runs Vale on text passed directly (via stdin)
  */
-export declare function checkText(text: string, textFileExt?: string, configPath?: string): Promise<CheckFileResult>;
+export declare function checkText(text: string, textFileExt?: string, configPath?: string, options?: CheckOptions): Promise<CheckFileResult>;
 //# sourceMappingURL=vale-runner.d.ts.map

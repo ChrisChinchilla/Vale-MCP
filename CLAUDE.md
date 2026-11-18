@@ -22,8 +22,11 @@ linting to AI coding assistants (Claude Desktop, Cursor, etc.) over stdio.
 ### Tools exposed
 
 - `vale_status` — check Vale is installed, with platform install instructions.
-- `vale_sync` — run `vale sync` to download style packages (fixes E100 errors).
+- `vale_sync` — run `vale sync` to download style packages (fixes E201 missing-style errors).
 - `check_file` — lint a file path.
+- `check_directory` — lint a directory recursively; issues carry their `file`.
+  `check_file`/`check_text`/`check_directory` share `min_severity`/`max_issues`
+  filters (applied in `buildResult`, not via Vale's `--minAlertLevel`).
 - `check_text` — lint a text string directly. Note: Vale has no stdin support
   for this — see history entry below before changing it.
 

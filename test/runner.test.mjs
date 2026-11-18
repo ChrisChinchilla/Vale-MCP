@@ -5,7 +5,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
-import { checkFile, checkText, isSupportedValeVersion, MAX_TEXT_BYTES } from "../build/vale-runner.js";
+import { checkFile, checkText, checkDirectory, isSupportedValeVersion, MAX_TEXT_BYTES } from "../build/vale-runner.js";
 
 const fixtures = path.join(path.dirname(fileURLToPath(import.meta.url)), "fixtures");
 const config = path.join(fixtures, ".vale.ini");
@@ -74,4 +74,31 @@ test("isSupportedValeVersion", () => {
 test("--version prints to stdout", () => {
   const out = execFileSync("node", [path.join(fixtures, "..", "..", "build", "index.js"), "--version"], { encoding: "utf-8" });
   assert.match(out.trim(), /^\d+\.\d+\.\d+/);
+});
+
+test("check_directory lints recursively and tags issues with their file", async () => {
+  const r = await checkDirectory(path.join(fixtures, "docs"), config);
+  assert.equal(r.summary.total, 3);
+  assert.deepEqual([...new Set(r.issues.map((i) => path.basename(i.file)))].sort(), ["a.md", "b.md"]);
+  await assert.rejects(checkDirectory(path.join(fixtures, "bad.md"), config), /Directory not found/);
+});
+
+test("min_severity and max_issues filter results", async () => {
+  const dir = path.join(fixtures, "docs");
+  const errorsOnly = await checkDirectory(dir, config, { minSeverity: "error" });
+  assert.equal(errorsOnly.summary.total, 2);
+  assert.ok(errorsOnly.issues.every((i) => i.severity === "error"));
+
+  const capped = await checkDirectory(dir, config, { maxIssues: 1 });
+  assert.equal(capped.issues.length, 1);
+  assert.equal(capped.summary.total, 3);
+  assert.equal(capped.truncated, true);
+  assert.match(capped.formatted, /first 1 of 3/);
+});
+
+test("suggested fixes are exposed", async () => {
+  const r = await checkText("A foobaz.", ".md", config);
+  const swap = r.issues.find((i) => i.check === "Test.Swap");
+  assert.deepEqual(swap.action, { name: "replace", params: ["quux"] });
+  assert.match(r.formatted, /Suggested fix: replace \("quux"\)/);
 });

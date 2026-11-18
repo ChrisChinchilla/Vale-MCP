@@ -7,6 +7,8 @@ import {
   NormalizedValeIssue,
   ValeSummary,
   CheckFileResult,
+  CheckOptions,
+  ValeSeverity,
 } from "./types.js";
 import { assertPathAllowed, PathNotAllowedError } from "./config.js";
 
@@ -233,7 +235,7 @@ function parseValeOutput(output: string): ValeRawOutput {
 /**
  * Normalizes Vale issues to a more user-friendly format
  */
-function normalizeIssues(issues: ValeRawOutput): NormalizedValeIssue[] {
+function normalizeIssues(issues: ValeRawOutput, includeFile = false): NormalizedValeIssue[] {
   const normalized: NormalizedValeIssue[] = [];
 
   for (const filePath in issues) {
@@ -247,6 +249,11 @@ function normalizeIssues(issues: ValeRawOutput): NormalizedValeIssue[] {
         severity: issue.Severity,
         link: issue.Link,
         match: issue.Match,
+        // Vale emits an empty Action object for rules without a fix
+        action: issue.Action?.Name
+          ? { name: issue.Action.Name, params: issue.Action.Params ?? [] }
+          : undefined,
+        file: includeFile ? filePath : undefined,
       });
     }
   }
@@ -285,7 +292,12 @@ function generateSummary(issues: NormalizedValeIssue[]): ValeSummary {
 /**
  * Formats Vale results as human-readable markdown with structured data
  */
-function formatValeResults(issues: NormalizedValeIssue[], summary: ValeSummary, context?: string): string {
+function formatValeResults(
+  issues: NormalizedValeIssue[],
+  summary: ValeSummary,
+  context?: string,
+  truncated = false
+): string {
   if (issues.length === 0) {
     return `✅ **No style issues found!**\n\nThe text looks good according to Vale style rules.`;
   }
@@ -326,11 +338,17 @@ function formatValeResults(issues: NormalizedValeIssue[], summary: ValeSummary, 
 
     for (const issue of severityIssues) {
       const emoji = severityEmoji[severity as keyof typeof severityEmoji];
-      output += `${emoji} **Line ${issue.line}** (${severity.toUpperCase()}): ${issue.message}\n`;
+      const where = issue.file ? `${issue.file}:${issue.line}` : `Line ${issue.line}`;
+      output += `${emoji} **${where}** (${severity.toUpperCase()}): ${issue.message}\n`;
       if (issue.match) {
         output += `   ↳ Found: "${issue.match}"\n`;
       }
       output += `   ↳ Rule: \`${issue.check}\`\n`;
+      if (issue.action) {
+        output += `   ↳ Suggested fix: ${issue.action.name}${
+          issue.action.params.length ? ` (${issue.action.params.map((p) => `"${p}"`).join(", ")})` : ""
+        }\n`;
+      }
       if (issue.link) {
         output += `   ↳ [More info](${issue.link})\n`;
       }
@@ -338,7 +356,41 @@ function formatValeResults(issues: NormalizedValeIssue[], summary: ValeSummary, 
     }
   }
 
+  if (truncated) {
+    output += `_Showing the first ${issues.length} of ${summary.total} issues._\n`;
+  }
+
   return output;
+}
+
+const SEVERITY_RANK: Record<ValeSeverity, number> = { suggestion: 0, warning: 1, error: 2 };
+
+/**
+ * Normalizes, filters and formats Vale's parsed output into a result
+ */
+function buildResult(
+  rawOutput: ValeRawOutput,
+  file: string,
+  context: string,
+  options: CheckOptions = {},
+  includeFile = false
+): CheckFileResult {
+  let issues = normalizeIssues(rawOutput, includeFile);
+  if (options.minSeverity) {
+    const min = SEVERITY_RANK[options.minSeverity];
+    issues = issues.filter((i) => SEVERITY_RANK[i.severity] >= min);
+  }
+  const summary = generateSummary(issues);
+  const truncated = options.maxIssues !== undefined && issues.length > options.maxIssues;
+  if (truncated) issues = issues.slice(0, options.maxIssues);
+
+  return {
+    formatted: formatValeResults(issues, summary, context, truncated),
+    file,
+    issues,
+    summary,
+    truncated,
+  };
 }
 
 /**
@@ -346,7 +398,8 @@ function formatValeResults(issues: NormalizedValeIssue[], summary: ValeSummary, 
  */
 export async function checkFile(
   filePath: string,
-  configPath?: string
+  configPath?: string,
+  options: CheckOptions = {}
 ): Promise<CheckFileResult> {
   // Resolve to absolute path (also stops a leading "-" being read as a flag)
   const absolutePath = path.resolve(process.cwd(), filePath);
@@ -377,17 +430,33 @@ export async function checkFile(
   const { stdout } = await runVale(args, { cwd: path.dirname(absolutePath) });
 
   // Parse output
-  const rawOutput = parseValeOutput(stdout);
-  const issues = normalizeIssues(rawOutput);
-  const summary = generateSummary(issues);
-  const formatted = formatValeResults(issues, summary, absolutePath);
+  return buildResult(parseValeOutput(stdout), absolutePath, absolutePath, options);
+}
 
-  return {
-    formatted,
-    file: absolutePath,
-    issues,
-    summary,
-  };
+/**
+ * Runs Vale on every supported file in a directory (recursively)
+ */
+export async function checkDirectory(
+  dirPath: string,
+  configPath?: string,
+  options: CheckOptions = {}
+): Promise<CheckFileResult> {
+  const absolutePath = path.resolve(process.cwd(), dirPath);
+  await assertPathAllowed(absolutePath);
+  if (configPath) await assertPathAllowed(configPath);
+
+  try {
+    if (!(await fs.stat(absolutePath)).isDirectory()) throw new Error();
+  } catch {
+    throw new Error(`Directory not found: ${dirPath}`);
+  }
+
+  const args = ["--output=JSON"];
+  if (configPath) args.push(`--config=${configPath}`);
+  args.push(absolutePath);
+
+  const { stdout } = await runVale(args, { cwd: absolutePath });
+  return buildResult(parseValeOutput(stdout), absolutePath, absolutePath, options, true);
 }
 
 /**
@@ -396,7 +465,8 @@ export async function checkFile(
 export async function checkText(
   text: string,
   textFileExt?: string,
-  configPath?: string
+  configPath?: string,
+  options: CheckOptions = {}
 ): Promise<CheckFileResult> {
   // Check to see of any text was sent
   if (!text || text.trim() === "") {
@@ -437,16 +507,6 @@ export async function checkText(
   const { stdout } = await runVale(args, { cwd: process.cwd(), input: text });
 
   // Parse output
-  const rawOutput = parseValeOutput(stdout);
-  const issues = normalizeIssues(rawOutput);
-  const summary = generateSummary(issues);
-  const formatted = formatValeResults(issues, summary, `text input`);
-
-  return {
-    formatted,
-    file: `stdin`,
-    issues,
-    summary,
-  };
+  return buildResult(parseValeOutput(stdout), `stdin`, `text input`, options);
 }
 

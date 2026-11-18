@@ -11,6 +11,27 @@ Keep entries short — a few lines, not a report.
 
 ---
 
+## 2026-11-18 — CI failed: `node --test test/` on Node 22
+
+`npm test` passed locally (newer Node) but failed in CI on Node 22:
+`node --test test/` treats `test/` as a module path there
+(MODULE_NOT_FOUND). Fixed with an explicit quoted glob,
+`node --test "test/*.test.mjs"` (Node's own glob; works without shell
+expansion, so also on Windows). Local Node is newer than CI/engines, so
+test-script changes need a CI run, not just a local one. Open work is tracked
+in ROADMAP.md section 5.
+
+## 2026-11-18 — check_directory, filters, suggested fixes
+
+`min_severity`/`max_issues` are applied in `buildResult` after parsing rather
+than via Vale's `--minAlertLevel`, so `summary` can reflect the filtered set
+while `truncated` flags a `max_issues` cut (summary.total stays the
+untruncated-but-filtered count). `check_directory` runs Vale with cwd = the
+directory so config search starts there. Vale only populates `Action` when
+the rule YAML declares `action:` — an empty `Name` means "no fix", so it's
+normalized to `undefined`. Not done: `list_rules`/`explain_rule`
+(`vale ls-config`) — still on ROADMAP.
+
 ## 2026-11-18 — Vale reports errors as JSON on stdout (E201), not E100
 
 Vale 3.27 prints config/runtime errors as a single JSON object
