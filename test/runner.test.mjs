@@ -4,7 +4,8 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
-import { checkFile, checkText, MAX_TEXT_BYTES } from "../build/vale-runner.js";
+import { execFileSync } from "node:child_process";
+import { checkFile, checkText, isSupportedValeVersion, MAX_TEXT_BYTES } from "../build/vale-runner.js";
 
 const fixtures = path.join(path.dirname(fileURLToPath(import.meta.url)), "fixtures");
 const config = path.join(fixtures, ".vale.ini");
@@ -54,4 +55,23 @@ test("VALE_ALLOWED_ROOTS blocks symlink escapes", async () => {
   } finally {
     delete process.env.VALE_ALLOWED_ROOTS;
   }
+});
+
+test("Vale-reported config errors surface as readable errors", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "vale-mcp-"));
+  fs.writeFileSync(path.join(dir, ".vale.ini"), "StylesPath = styles\n[*.md]\nBasedOnStyles = Missing\n");
+  fs.mkdirSync(path.join(dir, "styles"));
+  fs.writeFileSync(path.join(dir, "a.md"), "hi\n");
+  await assert.rejects(checkFile(path.join(dir, "a.md"), path.join(dir, ".vale.ini")), /E201.*StylesPath/);
+});
+
+test("isSupportedValeVersion", () => {
+  assert.equal(isSupportedValeVersion("vale version 3.27.0"), true);
+  assert.equal(isSupportedValeVersion("vale version 2.30.0"), false);
+  assert.equal(isSupportedValeVersion(undefined), true);
+});
+
+test("--version prints to stdout", () => {
+  const out = execFileSync("node", [path.join(fixtures, "..", "..", "build", "index.js"), "--version"], { encoding: "utf-8" });
+  assert.match(out.trim(), /^\d+\.\d+\.\d+/);
 });

@@ -32,12 +32,12 @@ Ranked by value for effort. Based on a read of `src/` as of v0.1.0.
 - [x] **CI workflow for PRs**: `npm ci && npm run build` and fail if `build/`
       differs from a fresh build (it's committed and must stay in sync).
       The current `main.yml` only runs TODO-to-issue.
-- [ ] **Fix `--help`/`--version` output** — they print to stderr; users
+- [x] **Fix `--help`/`--version` output** — they print to stderr; users
       expect stdout (stderr is only required while serving MCP over stdio).
-- [ ] **Narrow `isStylesDirectoryError`.** The regex `Runtime error` /
+- [x] **Narrow `isStylesDirectoryError`.** The regex `Runtime error` /
       `does not exist` matches unrelated failures (e.g. a missing input file)
       and tells users to run `vale_sync`. Match Vale's `E100` code only.
-- [ ] **Vale version gate.** README says Vale >= 3.0 but nothing checks it;
+- [x] **Vale version gate.** README says Vale >= 3.0 but nothing checks it;
       warn in `vale_status` if older.
 - [ ] Drop `stripCodeFence` unless Vale really emits fences (looks like a
       leftover); remove dead `ValeSeverity`/unused exports if confirmed.

@@ -17,6 +17,19 @@ const VALE_MAX_BUFFER = 10 * 1024 * 1024;
 export const MAX_TEXT_BYTES = 1024 * 1024;
 
 /**
+ * Vale writes config/runtime errors to stderr as a JSON object; turn it into
+ * "Code: Text". Anything else is returned unchanged.
+ */
+function describeStderr(stderr: string): string {
+  try {
+    parseValeOutput(stderr);
+  } catch (error) {
+    if (error instanceof ValeReportedError) return error.message;
+  }
+  return stderr;
+}
+
+/**
  * Runs Vale without a shell (arguments are never interpreted by a shell, so
  * user-supplied paths can't inject commands). Vale exits non-zero when it
  * finds issues but still prints JSON, so output is returned whenever there
@@ -40,7 +53,7 @@ function runVale(
         if (error && (error.killed || (options.requireStdout !== false && !stdout))) {
           const detail = error.killed
             ? "Vale timed out or produced too much output"
-            : stderr || error.message;
+            : describeStderr(stderr) || error.message;
           reject(new Error(`Vale execution failed: ${detail}`));
         } else if (error && options.requireStdout === false) {
           reject(new Error(stderr || error.message));
@@ -180,6 +193,17 @@ function stripCodeFence(output: string): string {
   return output.replace(/^```json\s*\n?/, "").replace(/\n?```\s*$/, "").trim();
 }
 
+class ValeReportedError extends Error {}
+
+/**
+ * Vale 3+ is required; versionOutput is e.g. "vale version 3.27.0".
+ * Unparseable output is given the benefit of the doubt.
+ */
+export function isSupportedValeVersion(versionOutput?: string): boolean {
+  const major = versionOutput?.match(/(\d+)\.\d+/)?.[1];
+  return major === undefined || Number(major) >= 3;
+}
+
 /**
  * Parses Vale's JSON output and handles errors
  */
@@ -189,8 +213,15 @@ function parseValeOutput(output: string): ValeRawOutput {
     if (!cleanedOutput) {
       return {};
     }
-    return JSON.parse(cleanedOutput) as ValeRawOutput;
+    const parsed = JSON.parse(cleanedOutput);
+    // Vale reports runtime/config problems as a single JSON error object on
+    // stdout (exit 2) rather than the usual {file: [issues]} map
+    if (typeof parsed?.Code === "string" && typeof parsed?.Text === "string") {
+      throw new ValeReportedError(`${parsed.Code}: ${parsed.Text}`);
+    }
+    return parsed as ValeRawOutput;
   } catch (error) {
+    if (error instanceof ValeReportedError) throw error;
     throw new Error(
       `Failed to parse Vale JSON output: ${
         error instanceof Error ? error.message : "Unknown error"
