@@ -1,4 +1,5 @@
 import { CheckFileResult } from "./types.js";
+export declare const MAX_TEXT_BYTES: number;
 /**
  * Checks if Vale is installed and accessible (with caching)
  */

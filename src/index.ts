@@ -51,6 +51,8 @@ Configuration priority:
 
 Environment variables:
   VALE_CONFIG_PATH    Path to specific .vale.ini file (overrides auto-detection)
+  VALE_ALLOWED_ROOTS  Directories (path-delimiter separated) that check_file and
+                      config paths are restricted to. Unset means no restriction.
 
 Example:
   # Use specific config file

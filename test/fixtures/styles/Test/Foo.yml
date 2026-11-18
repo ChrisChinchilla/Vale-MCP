@@ -1,0 +1,5 @@
+extends: existence
+message: "Avoid '%s'."
+level: warning
+tokens:
+  - foobar

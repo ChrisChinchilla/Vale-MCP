@@ -1,5 +1,4 @@
-import { exec, ExecOptions } from "child_process";
-import { promisify } from "util";
+import { execFile } from "child_process";
 import * as fs from "fs/promises";
 import * as fsSync from "fs";
 import * as path from "path";
@@ -9,8 +8,52 @@ import {
   ValeSummary,
   CheckFileResult,
 } from "./types.js";
+import { assertPathAllowed, PathNotAllowedError } from "./config.js";
 
-const execAsync = promisify(exec);
+// Limits so a huge input or a hung Vale process can't wedge the server
+const VALE_TIMEOUT_MS = 60_000;
+const VALE_SYNC_TIMEOUT_MS = 300_000; // sync downloads packages
+const VALE_MAX_BUFFER = 10 * 1024 * 1024;
+export const MAX_TEXT_BYTES = 1024 * 1024;
+
+/**
+ * Runs Vale without a shell (arguments are never interpreted by a shell, so
+ * user-supplied paths can't inject commands). Vale exits non-zero when it
+ * finds issues but still prints JSON, so output is returned whenever there
+ * is any, unless the process was killed (timeout / buffer overflow).
+ */
+function runVale(
+  args: string[],
+  options: { cwd?: string; input?: string; timeout?: number; requireStdout?: boolean } = {}
+): Promise<{ stdout: string; stderr: string }> {
+  return new Promise((resolve, reject) => {
+    const child = execFile(
+      "vale",
+      args,
+      {
+        cwd: options.cwd,
+        encoding: "utf-8",
+        timeout: options.timeout ?? VALE_TIMEOUT_MS,
+        maxBuffer: VALE_MAX_BUFFER,
+      },
+      (error, stdout, stderr) => {
+        if (error && (error.killed || (options.requireStdout !== false && !stdout))) {
+          const detail = error.killed
+            ? "Vale timed out or produced too much output"
+            : stderr || error.message;
+          reject(new Error(`Vale execution failed: ${detail}`));
+        } else if (error && options.requireStdout === false) {
+          reject(new Error(stderr || error.message));
+        } else {
+          resolve({ stdout, stderr });
+        }
+      }
+    );
+    if (options.input !== undefined) {
+      child.stdin?.end(options.input);
+    }
+  });
+}
 
 // Cache for Vale installation check
 let valeInstallCache: {
@@ -42,7 +85,7 @@ export async function checkValeInstalled(): Promise<{
 
   // Perform the check
   try {
-    const { stdout } = await execAsync("vale --version");
+    const { stdout } = await runVale(["--version"]);
     valeInstallCache = {
       checked: true,
       installed: true,
@@ -86,29 +129,32 @@ export async function syncValeStyles(configPath?: string): Promise<{
   error?: string;
 }> {
   try {
-    // Build command
-    let command = "vale sync";
+    const args = ["sync"];
     let workingDir = process.cwd();
-    
+
     // If config path provided, use its directory as working dir
     if (configPath) {
       try {
+        await assertPathAllowed(configPath);
         await fs.access(configPath, fsSync.constants.R_OK);
         workingDir = path.dirname(path.resolve(configPath));
-        command += ` --config="${configPath}"`;
-      } catch {
+        args.push(`--config=${configPath}`);
+      } catch (error) {
+        if (error instanceof PathNotAllowedError) throw error;
         // Config path doesn't exist or isn't readable, use default
         console.error(`Warning: Config path ${configPath} is not accessible`);
       }
     }
-    
-    console.error(`Running: ${command}`);
+
+    console.error(`Running: vale ${args.join(" ")}`);
     console.error(`Working directory: ${workingDir}`);
-    
-    const { stdout, stderr } = await execAsync(command, {
+
+    const { stdout, stderr } = await runVale(args, {
       cwd: workingDir,
+      timeout: VALE_SYNC_TIMEOUT_MS,
+      requireStdout: false,
     });
-    
+
     const output = stdout + (stderr ? `\n${stderr}` : "");
     
     return {
@@ -271,56 +317,33 @@ export async function checkFile(
   filePath: string,
   configPath?: string
 ): Promise<CheckFileResult> {
+  // Resolve to absolute path (also stops a leading "-" being read as a flag)
+  const absolutePath = path.resolve(process.cwd(), filePath);
+  await assertPathAllowed(absolutePath);
+  if (configPath) await assertPathAllowed(configPath);
+
   // Verify file exists and is readable
   try {
-    await fs.access(filePath, fsSync.constants.R_OK);
+    await fs.access(absolutePath, fsSync.constants.R_OK);
   } catch {
     throw new Error(`File not found or not readable: ${filePath}`);
   }
 
-  // Resolve to absolute path
-  const absolutePath = path.isAbsolute(filePath)
-    ? filePath
-    : path.resolve(process.cwd(), filePath);
-
-  // Build Vale command
-  let command = `vale --output=JSON`;
+  const args = ["--output=JSON"];
 
   // Only use --config if explicitly provided (e.g., from VALE_CONFIG_PATH env var)
   // Otherwise let Vale do its natural upward search from the file's location
   if (configPath) {
-    command += ` --config="${configPath}"`;
+    args.push(`--config=${configPath}`);
     console.error(`Using explicit config: ${configPath}`);
   } else {
     console.error(`Letting Vale search for config from: ${path.dirname(absolutePath)}`);
   }
 
-  command += ` "${absolutePath}"`;
+  args.push(absolutePath);
 
   // Run Vale from the file's directory so it searches upward from there
-  const execOptions: ExecOptions = {
-    encoding: 'utf-8',
-    cwd: path.dirname(absolutePath)
-  };
-
-  // Execute Vale
-  let stdout = "";
-  try {
-    const result = await execAsync(command, execOptions);
-    stdout = typeof result.stdout === 'string' ? result.stdout : result.stdout.toString('utf-8');
-  } catch (error: unknown) {
-    // Vale returns non-zero exit code when there are issues
-    // But it still outputs JSON to stdout
-    const execError = error as { stdout?: string; stderr?: string; message?: string };
-    if (execError.stdout) {
-      stdout = execError.stdout;
-    } else {
-      const errorMessage = execError.stderr || execError.message || "Unknown error";
-      throw new Error(
-        `Vale execution failed: ${errorMessage}`
-      );
-    }
-  }
+  const { stdout } = await runVale(args, { cwd: path.dirname(absolutePath) });
 
   // Parse output
   const rawOutput = parseValeOutput(stdout);
@@ -348,19 +371,21 @@ export async function checkText(
   if (!text || text.trim() === "") {
     throw new Error(`No text found to check. Make sure the text has content that is not only whitespace.`);
   }
-  // Now build the Vale command, starting with the command and adding arguments based on the parameters
-  let command = `vale`;
+  if (Buffer.byteLength(text, "utf-8") > MAX_TEXT_BYTES) {
+    throw new Error(`Text is too large to check (limit is ${MAX_TEXT_BYTES} bytes).`);
+  }
+
+  const args: string[] = [];
   if (textFileExt) {
     // Clean the provided file extension and
     //  confirm it's in a valid format,
     //  such as: "md", ".md", "txt", ".txt", or "docx"
-    let normalizedExt: string | undefined;
     const trimmedExt = textFileExt.trim();
     const extPattern = /^\.?[a-zA-Z0-9]+$/;
     if (extPattern.test(trimmedExt)) {
       // If a file extension is provided, we can use Vale's --ext flag to help it apply the correct rules
-      normalizedExt = trimmedExt.startsWith(".") ? trimmedExt : `.${trimmedExt}`;
-      command += ` --ext="${normalizedExt}"`;
+      const normalizedExt = trimmedExt.startsWith(".") ? trimmedExt : `.${trimmedExt}`;
+      args.push(`--ext=${normalizedExt}`);
       console.error(`Using file extension for Vale: ${normalizedExt}`);
     } else {
       // If the provided extension is not valid, throw an exception
@@ -369,48 +394,16 @@ export async function checkText(
     }
   }
   if (configPath) {
-    command += ` --config="${configPath}"`;
+    await assertPathAllowed(configPath);
+    args.push(`--config=${configPath}`);
     console.error(`Using explicit config: ${configPath}`);
   } else {
     console.error(`Using Vale defaults or searching for config from current directory`);
   }
-  // add output argument to command
-  command += ` --output=JSON`;
-  
-  // Execute Vale with text as stdin
-  const execOptions: ExecOptions = {
-    encoding: 'utf-8',
-    cwd: process.cwd()
-  };
+  args.push("--output=JSON");
 
-  let stdout = "";
-  try {
-    const result = await new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
-      const child = exec(command, execOptions, (error, stdout, stderr) => {
-        if (error && !stdout) {
-          // Only reject if there's no output (means Vale failed to run)
-          reject(error);
-        } else {
-          // Vale returns non-zero exit code when there are issues, but still outputs JSON
-          const stdoutStr = typeof stdout === 'string' ? stdout : stdout?.toString('utf-8') || '';
-          const stderrStr = typeof stderr === 'string' ? stderr : stderr?.toString('utf-8') || '';
-          resolve({ stdout: stdoutStr, stderr: stderrStr });
-        }
-      });
-
-      // Write text to stdin and close
-      child.stdin?.write(text);
-      child.stdin?.end();
-    });
-
-    stdout = result.stdout;
-  } catch (error: unknown) {
-    const execError = error as { stderr?: string; message?: string };
-    const errorMessage = execError.stderr || execError.message || "Unknown error";
-    throw new Error(
-      `Vale execution failed: ${errorMessage}`
-    );
-  }
+  // Vale has no stdin flag; with no file argument it reads stdin
+  const { stdout } = await runVale(args, { cwd: process.cwd(), input: text });
 
   // Parse output
   const rawOutput = parseValeOutput(stdout);

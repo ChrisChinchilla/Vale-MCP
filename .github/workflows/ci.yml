@@ -1,0 +1,23 @@
+name: "CI"
+on:
+    push:
+        branches: [main]
+    pull_request:
+jobs:
+    test:
+        runs-on: "ubuntu-latest"
+        steps:
+            - uses: "actions/checkout@v4"
+            - uses: "actions/setup-node@v4"
+              with:
+                  node-version: 22
+            - name: "Install Vale"
+              run: |
+                  curl -sSL https://github.com/errata-ai/vale/releases/download/v3.27.0/vale_3.27.0_Linux_64-bit.tar.gz | tar -xz vale
+                  sudo mv vale /usr/local/bin/
+            - run: npm ci
+            - run: npm test
+            - run: npm audit --omit=dev
+            # build/ is committed and ships to npm, so it must match src/
+            - name: "Check build/ is up to date"
+              run: git diff --exit-code -- build

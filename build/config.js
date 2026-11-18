@@ -47,4 +47,45 @@ export function resolveConfigPath(configPath) {
     }
     return path.resolve(process.cwd(), configPath);
 }
+export class PathNotAllowedError extends Error {
+}
+/**
+ * When VALE_ALLOWED_ROOTS is set (path-delimiter separated), rejects paths
+ * outside those directories. Symlinks are resolved first so they can't be
+ * used to escape. Unset means no restriction.
+ */
+export async function assertPathAllowed(target) {
+    const roots = process.env.VALE_ALLOWED_ROOTS?.split(path.delimiter).filter(Boolean);
+    if (!roots?.length)
+        return;
+    // Resolve the nearest existing ancestor so not-yet-existing paths still get checked
+    let real = path.resolve(target);
+    const tail = [];
+    for (;;) {
+        try {
+            real = path.join(await fs.realpath(real), ...tail);
+            break;
+        }
+        catch {
+            const parent = path.dirname(real);
+            if (parent === real)
+                break;
+            tail.unshift(path.basename(real));
+            real = parent;
+        }
+    }
+    for (const root of roots) {
+        let realRoot;
+        try {
+            realRoot = await fs.realpath(path.resolve(root));
+        }
+        catch {
+            continue;
+        }
+        const rel = path.relative(realRoot, real);
+        if (rel === "" || (!rel.startsWith("..") && !path.isAbsolute(rel)))
+            return;
+    }
+    throw new PathNotAllowedError(`Access denied: ${target} is outside the directories allowed by VALE_ALLOWED_ROOTS`);
+}
 //# sourceMappingURL=config.js.map

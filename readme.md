@@ -272,6 +272,22 @@ You can specify a Vale configuration file using the `VALE_CONFIG_PATH` environme
 }
 ```
 
+### Restricting file access
+
+By default `check_file` can read any file the server process can. To limit it,
+set `VALE_ALLOWED_ROOTS` to one or more directories (separated by `:` on
+macOS/Linux, `;` on Windows). Files and `config_path` values outside those
+directories, including via symlinks, are rejected:
+
+```json
+"env": {
+  "VALE_ALLOWED_ROOTS": "/path/to/docs:/path/to/other/docs"
+}
+```
+
+Vale runs have a 60 second timeout (5 minutes for `vale_sync`), and
+`check_text` accepts up to 1 MB of text.
+
 ## Usage examples
 
 Once configured, you can ask your AI assistant to:

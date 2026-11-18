@@ -13,7 +13,8 @@
     "start": "node build/index.js",
     "install:global": "npm link",
     "uninstall:global": "npm unlink -g vale-mcp",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "test": "npm run build && node --test test/"
   },
   "files": [
     "build",
@@ -38,11 +39,11 @@
     "url": "https://github.com/chrischinchilla/vale-mcp.git"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.30.0",
-    "zod": "^4.4.3"
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
-    "@types/node": "^24.13.3",
+    "@types/node": "^24.19.2",
     "typescript": "^5.9.3"
   }
 }

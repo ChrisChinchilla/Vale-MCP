@@ -11,6 +11,23 @@ Keep entries short — a few lines, not a report.
 
 ---
 
+## 2026-11-18 — Security hardening: execFile, limits, allowed roots
+
+Audit found `vale-runner.ts` built every command as an interpolated string
+for `exec()`, so client-supplied `path`/`config_path`/`text_file_ext` could
+inject shell commands. Replaced with a single `runVale(args, opts)` helper
+over `execFile` (no shell). Rules going forward: never build a command
+string; pass `--config=${p}` as one arg; resolve file paths to absolute
+before passing (a leading `-` would otherwise read as a flag).
+- `runVale` returns stdout even on non-zero exit (Vale exits non-zero when it
+  finds issues) but rejects if the process was killed (timeout/maxBuffer).
+- Limits: 60s timeout (300s for sync), 10 MB output, 1 MB `check_text` input.
+- `VALE_ALLOWED_ROOTS` (opt-in, default unrestricted to keep existing setups
+  working) checked via `assertPathAllowed` with `realpath`, so symlinks can't
+  escape; applied to `check_file` path and every `config_path`.
+- Deps: SDK 1.30 → 1.32.2, zod 4.4 → 4.6.7 (audit: 9 vulns → 0). Added tests
+  (`test/`), CI (`ci.yml`) and Dependabot. See ROADMAP.md for what's left.
+
 ## 2026-08-25 — Dropped outputSchema: SDK emits invalid draft-07 dialect
 
 Claude Desktop rejected `check_text` calls: "the tool's output schema uses
