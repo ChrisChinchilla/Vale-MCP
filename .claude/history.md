@@ -20,6 +20,14 @@ tool input comes back as `isError: true` with "Input validation error: ...
 at <field>" rather than a thrown protocol error (SDK 1.32). Server stderr is
 ignored in tests (`stderr: "ignore"`) because startup logs there. Test-only
 change, so no release needed.
+## 2026-11-18 — 0.2.1 published via OIDC (verified)
+
+Release v0.2.1 → `publish.yml` succeeded with no token (npm 11.19.1 on
+Node 24), provenance attested (`slsa.dev/provenance/v1`), `latest` = 0.2.1,
+`npx vale-mcp@0.2.1 --version` works. Gotcha: the run is green and logs
+`+ vale-mcp@0.2.1` before the registry serves it ("may take a few minutes"),
+so `npm view` / `npx` can 404 for a minute or two; poll, don't panic.
+The unused `NPM_TOKEN` secret can now be deleted (user's call).
 
 ## 2026-11-18 — 0.2.0 published manually; 0.2.1 tests the OIDC workflow
 

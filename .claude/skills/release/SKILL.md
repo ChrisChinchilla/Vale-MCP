@@ -55,7 +55,10 @@ If unsure, ask the user. State the chosen version and why.
 
 ## 5. Verify
 
-- `npm view vale-mcp version` shows X.Y.Z (the registry can lag a minute).
+- `npm view vale-mcp version` shows X.Y.Z. The registry can lag a few minutes
+  after the workflow goes green (log says "may take a few minutes"); poll
+  `npm view vale-mcp@X.Y.Z version` every ~15s before treating it as a failure.
+  Provenance: `npm view vale-mcp@X.Y.Z dist.attestations.provenance.predicateType`.
 - Smoke test from outside the repo: `cd $(mktemp -d) && npx -y vale-mcp@X.Y.Z --version`
   prints X.Y.Z.
 - Report the release URL and npm version to the user.
