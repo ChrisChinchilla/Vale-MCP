@@ -4,6 +4,9 @@
 
 ### Added
 
+- **MCP resource `vale://config`:** the active `.vale.ini`.
+- **MCP prompts:** `fix_style_issues`, `review_text` and `explain_style_rule`.
+
 - **`list_rules` tool:** lists the rules of the styles the active config uses,
   with level, check type, message and enabled/disabled state per config section.
 - **`explain_rule` tool:** returns one rule's YAML definition and where it is

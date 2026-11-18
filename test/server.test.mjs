@@ -12,12 +12,12 @@ const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const fixtures = path.join(root, "test", "fixtures");
 const entry = path.join(root, "build", "index.js");
 
-async function connect(env = {}) {
+async function connect(env = {}, cwd = fixtures) {
   const client = new Client({ name: "test-client", version: "0.0.0" });
   const transport = new StdioClientTransport({
     command: "node",
     args: [entry],
-    cwd: fixtures,
+    cwd,
     env: { ...process.env, ...env },
     stderr: "ignore",
   });
@@ -146,4 +146,51 @@ test("list_rules and explain_rule work through the server", async () => {
   const bad = await client.callTool({ name: "explain_rule", arguments: { rule: "../x", config_path } });
   assert.equal(bad.isError, true);
   assert.match(text(bad), /Invalid rule name/);
+});
+
+test("exposes the active config as a resource", async () => {
+  const { resources } = await client.listResources();
+  assert.deepEqual(resources.map((r) => r.uri), ["vale://config"]);
+  const r = await client.readResource({ uri: "vale://config" });
+  assert.match(r.contents[0].text, /BasedOnStyles = Test/);
+  assert.match(r.contents[0].text, /fixtures[\\/]\.vale\.ini/);
+});
+
+test("the config resource explains when there is no config, and honours VALE_ALLOWED_ROOTS", async () => {
+  const empty = fs.mkdtempSync(path.join(os.tmpdir(), "vale-mcp-e2e-"));
+  const noConfig = await connect({ VALE_CONFIG_PATH: "" }, empty);
+  try {
+    const r = await noConfig.readResource({ uri: "vale://config" });
+    assert.match(r.contents[0].text, /No \.vale\.ini was found/);
+  } finally {
+    await noConfig.close();
+  }
+
+  const restricted = await connect({ VALE_ALLOWED_ROOTS: empty });
+  try {
+    await assert.rejects(restricted.readResource({ uri: "vale://config" }), /Access denied|outside the directories/);
+  } finally {
+    await restricted.close();
+  }
+});
+
+test("lists and renders prompts", async () => {
+  const { prompts } = await client.listPrompts();
+  assert.deepEqual(prompts.map((p) => p.name).sort(), ["explain_style_rule", "fix_style_issues", "review_text"]);
+
+  const fix = await client.getPrompt({ name: "fix_style_issues", arguments: { path: "docs/a.md" } });
+  assert.equal(fix.messages[0].role, "user");
+  assert.match(fix.messages[0].content.text, /docs\/a\.md/);
+  assert.match(fix.messages[0].content.text, /min_severity "warning"/);
+
+  const strict = await client.getPrompt({ name: "fix_style_issues", arguments: { path: "a.md", min_severity: "error" } });
+  assert.match(strict.messages[0].content.text, /min_severity "error"/);
+
+  const review = await client.getPrompt({ name: "review_text", arguments: { text: "Hello there." } });
+  assert.match(review.messages[0].content.text, /Hello there\./);
+
+  const explain = await client.getPrompt({ name: "explain_style_rule", arguments: { rule: "write-good.Passive" } });
+  assert.match(explain.messages[0].content.text, /explain_rule.*write-good\.Passive/);
+
+  await assert.rejects(client.getPrompt({ name: "fix_style_issues", arguments: {} }), /path/);
 });

@@ -437,6 +437,22 @@ Lint AI-generated text against Vale style rules before it's written to a file or
 
 > "Check this text for style issues"
 
+## Resources
+
+| URI | Description |
+| --- | --- |
+| `vale://config` | The `.vale.ini` the server is using (from `VALE_CONFIG_PATH` or the working directory). Subject to `VALE_ALLOWED_ROOTS`. |
+
+## Prompts
+
+Clients that support MCP prompts (for example as slash commands) can offer:
+
+| Prompt | Arguments | What it does |
+| --- | --- | --- |
+| `fix_style_issues` | `path`, optional `min_severity` | Lints a file, fixes the issues (using suggested fixes where available) and re-checks until clean. |
+| `review_text` | `text`, optional `text_file_ext` | Checks text and returns a corrected version. |
+| `explain_style_rule` | `rule` | Explains what a rule checks and why, with before and after examples. |
+
 ## Command-line options
 
 ```bash

@@ -11,6 +11,17 @@ Keep entries short — a few lines, not a report.
 
 ---
 
+## 2026-11-18 — MCP resources and prompts
+
+Added `vale://config` (resource) and three prompts via `registerResource` /
+`registerPrompt` (SDK 1.32). The resource returns explanatory text rather
+than an error when no config was found at startup, and reads go through
+`assertPathAllowed`. Prompts are static templates naming the tools to call
+(no server-side logic). Neither involves `outputSchema`, so the draft-07
+issue above doesn't apply; prompt arguments are advertised as a plain
+argument list, not JSON Schema. Skipped a rules resource: `list_rules`
+already covers it. Stacked on the list_rules PR (#38).
+
 ## 2026-11-18 — list_rules / explain_rule
 
 Vale has no "list rules" command, so rules are discovered by running

@@ -19,6 +19,14 @@ linting to AI coding assistants (Claude Desktop, Cursor, etc.) over stdio.
 - Build output goes to `build/` (compiled JS is committed — the `bin` entry
   point `vale-cli` points at `build/index.js`).
 
+### Resources and prompts
+
+- Resource `vale://config` — the active `.vale.ini` (uses `valeConfigPath`,
+  checked with `assertPathAllowed`).
+- Prompts `fix_style_issues`, `review_text`, `explain_style_rule` — plain
+  instruction templates that tell the assistant which tools to call; they
+  contain no logic, so keep tool names in them in sync with the tools.
+
 ### Tools exposed
 
 - `vale_status` — check Vale is installed, with platform install instructions.
