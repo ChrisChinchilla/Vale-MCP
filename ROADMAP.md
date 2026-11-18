@@ -109,6 +109,6 @@ Release follow-ups:
 
 - [x] 0.2.0 is on npm (published manually after the CI EOTP failure; no
       provenance). Its GitHub release/tag was left as is.
-- [ ] Verify trusted publishing works: first run is the 0.2.1 release.
+- [x] Trusted publishing verified: 0.2.1 published via OIDC with provenance.
 - [ ] Delete the unused `NPM_TOKEN` repo secret.
 - [ ] Consider `npm deprecate vale-mcp@0.1.0` (pre-security-fix).
