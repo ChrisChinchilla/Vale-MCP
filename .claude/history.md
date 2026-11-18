@@ -11,6 +11,18 @@ Keep entries short — a few lines, not a report.
 
 ---
 
+## 2026-11-18 — main CI broke: Dependabot TS 7 + @types/node 26
+
+Merging Dependabot's TypeScript 7.0.2 and @types/node 26 PRs together left
+`package.json` invalid (missing comma between devDependencies), so `npm ci`
+failed on main. Separately, PR #31 alone already failed: with TS 7 `tsc`
+couldn't find Node types (`Cannot find name 'fs'`). Reverted to
+typescript ^5.9.3 and @types/node ^24 (matches `engines` >=22) and added
+Dependabot `ignore` rules for major bumps of both. To adopt TS 7 later: add
+`"types": ["node"]` to tsconfig, confirm `build/` output is byte-identical
+(CI checks it) and test on Node 22. Lesson: when merging several Dependabot
+PRs that touch the same file, re-check `package.json` and CI after the second.
+
 ## 2026-11-18 — CI failed: `node --test test/` on Node 22
 
 `npm test` passed locally (newer Node) but failed in CI on Node 22:

@@ -75,10 +75,10 @@ Ranked by value for effort. Based on a read of `src/` as of v0.1.0.
 
 Release steps (need the repo owner):
 
-- [ ] Merge PRs in order: #24 → #25 → #26, retargeting each to `main` after
+- [x] (done) Merge PRs in order: #24 → #25 → #26, retargeting each to `main` after
       the previous one merges. All three pass CI.
-- [ ] Merge `ci/npm-publish` (release workflow); `NPM_TOKEN` secret is added.
-- [ ] First publish of `vale-mcp` (npm returned 404 for `vale-mcp@latest`, the
+- [x] (done) Merge `ci/npm-publish` (release workflow); `NPM_TOKEN` secret is added.
+- [x] (done, manual) First publish of `vale-mcp` (npm returned 404 for `vale-mcp@latest`, the
       original bug). Check the name is free; if taken, use a scoped name and
       update README and install badges. Bump version for the release
       (hardening + new tool is at least 0.2.0) and move CHANGELOG
