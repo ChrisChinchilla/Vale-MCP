@@ -11,6 +11,16 @@ Keep entries short — a few lines, not a report.
 
 ---
 
+## 2026-11-18 — CI failed: `node --test test/` on Node 22
+
+`npm test` passed locally (newer Node) but failed in CI on Node 22:
+`node --test test/` treats `test/` as a module path there
+(MODULE_NOT_FOUND). Fixed with an explicit quoted glob,
+`node --test "test/*.test.mjs"` (Node's own glob; works without shell
+expansion, so also on Windows). Local Node is newer than CI/engines, so
+test-script changes need a CI run, not just a local one. Open work is tracked
+in ROADMAP.md section 5.
+
 ## 2026-11-18 — check_directory, filters, suggested fixes
 
 `min_severity`/`max_issues` are applied in `buildResult` after parsing rather

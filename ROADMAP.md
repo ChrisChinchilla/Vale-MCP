@@ -41,7 +41,8 @@ Ranked by value for effort. Based on a read of `src/` as of v0.1.0.
       warn in `vale_status` if older.
 - [ ] Drop `stripCodeFence` unless Vale really emits fences (looks like a
       leftover); remove dead `ValeSeverity`/unused exports if confirmed.
-- [ ] Bump `@types/node`; stay on TypeScript 5.9 (decision in history.md).
+- [x] Bump `@types/node` (done: 24.19.2, matches engines >=22). Staying on
+      TypeScript 5.9 (decision in history.md); `@types/node` 26 not needed.
 - [ ] Re-test `outputSchema` once upstream SDK issues #2084/#2653/#2677 close.
 
 ## 3. Features
@@ -69,3 +70,36 @@ Ranked by value for effort. Based on a read of `src/` as of v0.1.0.
       published under the final package name.
 - [ ] README: fix the `@iflow-mcp/...` install line (third-party mirror).
       (`vale-mcp` bin alias added alongside `vale-cli`.)
+
+## 5. Follow-ups from the hardening/feature PRs (#24, #25, #26)
+
+Release steps (need the repo owner):
+
+- [ ] Merge PRs in order: #24 → #25 → #26, retargeting each to `main` after
+      the previous one merges. All three pass CI.
+- [ ] Merge `ci/npm-publish` (release workflow); `NPM_TOKEN` secret is added.
+- [ ] First publish of `vale-mcp` (npm returned 404 for `vale-mcp@latest`, the
+      original bug). Check the name is free; if taken, use a scoped name and
+      update README and install badges. Bump version for the release
+      (hardening + new tool is at least 0.2.0) and move CHANGELOG
+      "Unreleased" under it.
+
+Test and CI gaps:
+
+- [ ] No end-to-end test through a real MCP client: the tool handlers in
+      `src/index.ts` (`check_directory`, filters, `toToolResult`, error
+      mapping, `isStylesDirectoryError`) are only covered via the runner
+      functions. Add a stdio client test (SDK `Client` + `StdioClientTransport`).
+- [ ] No tests for `vale_sync`, the timeout/maxBuffer kill path, or the
+      `VALE_ALLOWED_ROOTS` check on `vale_sync`'s `config_path`.
+- [ ] CI only runs Node 22 and Vale 3.27.0 (pinned URL in `ci.yml`). Add Node
+      24 and a Vale-version matrix; bump the pin deliberately.
+- [ ] `isStylesDirectoryError` keys on Vale 3.27.0's E201 wording; re-check on
+      newer Vale (noted in history).
+- [ ] `VALE_ALLOWED_ROOTS` doesn't constrain the working directory Vale
+      searches for config from, or what `vale sync` downloads; only the file
+      and `config_path` are checked.
+- [ ] `check_directory` has no file-count cap beyond the 60s timeout and 10 MB
+      output limit; consider a `--glob` input.
+- [ ] `list_rules`/`explain_rule` (above) was investigated only to the
+      `vale ls-config` level; nothing is built.
