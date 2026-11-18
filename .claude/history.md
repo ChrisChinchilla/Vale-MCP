@@ -11,6 +11,16 @@ Keep entries short — a few lines, not a report.
 
 ---
 
+## 2026-11-18 — First release run failed: EOTP
+
+The v0.2.0 release was created by hand-off after the PR merged (no release
+existed at first: merging the release PR doesn't publish, creating the GitHub
+Release does). `publish.yml` ran, built and signed provenance, then `npm
+publish` failed with `EOTP`: the `NPM_TOKEN` secret requires a 2FA code,
+which CI can't supply. Needs a token with 2FA bypass or trusted publishing
+(see the release skill). Tag/version check passed. Fix is on the npm side;
+re-run the failed run once the secret is replaced.
+
 ## 2026-11-18 — Release 0.2.0 and the release skill
 
 npm had only the manual 0.1.0 (pre-hardening code, still shell-injectable),

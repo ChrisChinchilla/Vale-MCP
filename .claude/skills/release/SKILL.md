@@ -63,6 +63,14 @@ If unsure, ask the user. State the chosen version and why.
 - Publish workflow fails on version mismatch: the tag and `package.json`
   differ. Delete the release and tag (`gh release delete vX.Y.Z --cleanup-tag`,
   with the user's OK), fix via a new PR, and release again.
+- `EOTP` ("requires a one-time password") on publish: `NPM_TOKEN` is a token
+  that still needs 2FA. Replace the secret with a granular access token that
+  has write access to `vale-mcp` and **"Bypass two-factor authentication"**
+  enabled (or a classic Automation token), or switch to npm trusted
+  publishing (package Settings → Trusted Publisher: repo
+  `ChrisChinchilla/Vale-MCP`, workflow `publish.yml`; needs npm >= 11.5.1 in
+  the workflow and no `NODE_AUTH_TOKEN`). Then `gh run rerun <run-id>`; the
+  release and tag already exist, so don't recreate them.
 - `403`/`E404` on publish: `NPM_TOKEN` is missing, expired, or lacks publish
   rights for the package. Ask the user to refresh the secret.
 - "Cannot publish over existing version": the version already exists on npm;
