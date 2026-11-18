@@ -11,6 +11,20 @@ Keep entries short — a few lines, not a report.
 
 ---
 
+## 2026-11-18 — list_rules / explain_rule
+
+Vale has no "list rules" command, so rules are discovered by running
+`vale ls-config` (JSON: `Paths` = StylesPath dirs, `SBaseStyles`/`GBaseStyles`
+= styles per `[glob]`, `SChecks` = enabled/disabled per rule, `SLevels` =
+level overrides) and reading `<Path>/<Style>/<Rule>.yml`. Built-in `Vale.*`
+rules have no file, so they're skipped in the list and `explain_rule` says so.
+Rule YAML is read with a line-based top-level-key regex (no YAML dependency);
+multi-line `message: >` values come back empty (marked `shortcut:` in code).
+`explain_rule` validates the name with a segment whitelist before building a
+path, and file reads go through `assertPathAllowed`, so with
+`VALE_ALLOWED_ROOTS` set, rules in a global styles dir outside the roots are
+denied. Stacked on the e2e-tests PR (#37).
+
 ## 2026-11-18 — End-to-end MCP client tests
 
 Added `test/server.test.mjs`: spawns `build/index.js` over stdio with the SDK

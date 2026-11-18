@@ -39,7 +39,7 @@ test("lists all tools with filter inputs", async () => {
   const { tools } = await client.listTools();
   assert.deepEqual(
     tools.map((t) => t.name).sort(),
-    ["check_directory", "check_file", "check_text", "vale_status", "vale_sync"]
+    ["check_directory", "check_file", "check_text", "explain_rule", "list_rules", "vale_status", "vale_sync"]
   );
   for (const name of ["check_file", "check_text", "check_directory"]) {
     const props = tools.find((t) => t.name === name).inputSchema.properties;
@@ -129,4 +129,21 @@ test("VALE_ALLOWED_ROOTS is enforced through the server, including vale_sync", a
   } finally {
     await restricted.close();
   }
+});
+
+test("list_rules and explain_rule work through the server", async () => {
+  const config_path = path.join(fixtures, ".vale.ini");
+  const list = await client.callTool({ name: "list_rules", arguments: { config_path } });
+  assert.ok(!list.isError, text(list));
+  assert.deepEqual(list.structuredContent.rules.map((r) => r.name), ["Test.Foo", "Test.Swap"]);
+  assert.match(text(list), /\*\*Test\.Swap\*\* \(error, substitution\)/);
+
+  const explain = await client.callTool({ name: "explain_rule", arguments: { rule: "Test.Swap", config_path } });
+  assert.ok(!explain.isError, text(explain));
+  assert.match(text(explain), /swap:/);
+  assert.match(text(explain), /`\*\.md`: enabled/);
+
+  const bad = await client.callTool({ name: "explain_rule", arguments: { rule: "../x", config_path } });
+  assert.equal(bad.isError, true);
+  assert.match(text(bad), /Invalid rule name/);
 });

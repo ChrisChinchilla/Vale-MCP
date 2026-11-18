@@ -419,4 +419,139 @@ export async function checkText(text, textFileExt, configPath, options = {}) {
     // Parse output
     return buildResult(parseValeOutput(stdout), `stdin`, `text input`, options);
 }
+async function loadLsConfig(configPath) {
+    const args = ["ls-config"];
+    let cwd = process.cwd();
+    if (configPath) {
+        await assertPathAllowed(configPath);
+        args.push(`--config=${configPath}`);
+        cwd = path.dirname(path.resolve(configPath));
+    }
+    const { stdout } = await runVale(args, { cwd });
+    // Same shape check as lint output: config errors come back as {Code, Text}
+    return parseValeOutput(stdout);
+}
+/**
+ * Reads the top-level scalar keys of a rule's YAML.
+ * shortcut: line-based, so folded/multi-line values (message: >) are
+ * returned as empty; upgrade to a YAML parser if that matters.
+ */
+function parseRuleYaml(source) {
+    const fields = {};
+    for (const line of source.split(/\r?\n/)) {
+        const m = line.match(/^(extends|message|level|link|description):\s*(.*?)\s*$/);
+        if (m && !(m[1] in fields))
+            fields[m[1]] = m[2].replace(/^(["'])(.*)\1$/, "$2");
+    }
+    return fields;
+}
+/** Style dirs hold rules as <StylesPath>/<Style>/<Rule>.yml */
+async function findStyleDir(paths, style) {
+    for (const base of paths) {
+        const dir = path.join(base, style);
+        try {
+            if ((await fs.stat(dir)).isDirectory())
+                return dir;
+        }
+        catch {
+            // not in this path
+        }
+    }
+    return undefined;
+}
+function buildRuleInfo(style, rule, fields, config) {
+    const name = `${style}.${rule}`;
+    const sections = [];
+    const bases = { ...config.SBaseStyles };
+    if (config.GBaseStyles?.length)
+        bases["(global)"] = config.GBaseStyles;
+    for (const [glob, styles] of Object.entries(bases)) {
+        if (!styles.includes(style))
+            continue;
+        sections.push({
+            glob,
+            enabled: config.SChecks?.[glob]?.[name] !== false,
+            level: config.SLevels?.[glob]?.[name] ?? fields.level,
+        });
+    }
+    return {
+        name,
+        style,
+        extends: fields.extends,
+        level: fields.level,
+        message: fields.message || undefined,
+        description: fields.description || undefined,
+        link: fields.link || undefined,
+        sections,
+    };
+}
+/**
+ * Lists the rules of the styles the active config uses (optionally one style).
+ * Vale's built-in "Vale" style has no files on disk, so it is not listed.
+ */
+export async function listRules(configPath, style) {
+    const config = await loadLsConfig(configPath);
+    const paths = config.Paths ?? [];
+    const active = new Set([
+        ...(config.GBaseStyles ?? []),
+        ...Object.values(config.SBaseStyles ?? {}).flat(),
+    ]);
+    const styles = style ? [style].filter((s) => active.has(s)) : [...active].sort();
+    if (style && styles.length === 0) {
+        throw new Error(`Style "${style}" is not used by the active Vale config.`);
+    }
+    const rules = [];
+    for (const s of styles) {
+        const dir = await findStyleDir(paths, s);
+        if (!dir)
+            continue;
+        await assertPathAllowed(dir);
+        for (const file of (await fs.readdir(dir)).filter((f) => /\.ya?ml$/.test(f)).sort()) {
+            const fields = parseRuleYaml(await fs.readFile(path.join(dir, file), "utf-8"));
+            rules.push(buildRuleInfo(s, file.replace(/\.ya?ml$/, ""), fields, config));
+        }
+    }
+    return rules;
+}
+/**
+ * Returns one rule's YAML definition and where it is active.
+ * `rule` is "Style.Rule" as shown in lint results (the `check` field).
+ */
+export async function explainRule(rule, configPath) {
+    // Segment whitelist: also prevents path traversal via the rule name
+    if (!/^[\w-]+(\.[\w-]+)+$/.test(rule)) {
+        throw new Error(`Invalid rule name "${rule}". Expected the form "Style.Rule", e.g. "write-good.Passive".`);
+    }
+    const dot = rule.indexOf(".");
+    const style = rule.slice(0, dot);
+    const ruleName = rule.slice(dot + 1);
+    const config = await loadLsConfig(configPath);
+    const dir = await findStyleDir(config.Paths ?? [], style);
+    const notFound = () => new Error(style === "Vale"
+        ? `${rule} is one of Vale's built-in rules, which have no definition file. See https://vale.sh/docs/styles#built-in-style`
+        : `Rule ${rule} was not found in any StylesPath of the active config.`);
+    if (!dir)
+        throw notFound();
+    let file;
+    for (const ext of [".yml", ".yaml"]) {
+        const candidate = path.join(dir, ruleName + ext);
+        try {
+            await fs.access(candidate, fsSync.constants.R_OK);
+            file = candidate;
+            break;
+        }
+        catch {
+            // try next extension
+        }
+    }
+    if (!file)
+        throw notFound();
+    await assertPathAllowed(file);
+    const definition = await fs.readFile(file, "utf-8");
+    return {
+        rule: buildRuleInfo(style, ruleName, parseRuleYaml(definition), config),
+        file,
+        definition,
+    };
+}
 //# sourceMappingURL=vale-runner.js.map
