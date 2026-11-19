@@ -165,9 +165,11 @@ function getInstallationInstructions(): {
 }
 
 /**
- * Helper function to generate "Vale not installed" error response
+ * Returns the "Vale not installed" error response, or undefined when Vale is available.
+ * Tool handlers that shell out to Vale call this first.
  */
-function createValeNotInstalledResponse(): CallToolResult {
+async function valeMissingResponse(): Promise<CallToolResult | undefined> {
+  if ((await checkValeInstalled()).installed) return undefined;
   return {
     isError: true,
     content: [
@@ -348,10 +350,8 @@ server.registerTool(
   async ({ config_path }) => {
     debug(`vale_sync called - config_path: ${config_path}`);
 
-    const valeCheck = await checkValeInstalled();
-    if (!valeCheck.installed) {
-      return createValeNotInstalledResponse();
-    }
+    const missing = await valeMissingResponse();
+    if (missing) return missing;
 
     const effectiveConfigPath = config_path || valeConfigPath;
     const syncResult = await syncValeStyles(effectiveConfigPath);
@@ -421,10 +421,8 @@ server.registerTool(
   async ({ path: filePath, config_path, min_severity, max_issues }) => {
     debug(`check_file called - path: ${filePath}, config_path: ${config_path}`);
 
-    const valeCheck = await checkValeInstalled();
-    if (!valeCheck.installed) {
-      return createValeNotInstalledResponse();
-    }
+    const missing = await valeMissingResponse();
+    if (missing) return missing;
 
     try {
       // Only pass config_path if explicitly provided by the user
@@ -472,10 +470,8 @@ server.registerTool(
   async ({ text, text_file_ext, config_path, min_severity, max_issues }) => {
     debug(`check_text called - text length: ${text?.length}, text_file_ext: ${text_file_ext}, config_path: ${config_path}`);
 
-    const valeCheck = await checkValeInstalled();
-    if (!valeCheck.installed) {
-      return createValeNotInstalledResponse();
-    }
+    const missing = await valeMissingResponse();
+    if (missing) return missing;
 
     try {
       // Use the provided config_path if given, otherwise fall back to the
@@ -518,10 +514,8 @@ server.registerTool(
   async ({ path: dirPath, config_path, min_severity, max_issues }) => {
     debug(`check_directory called - path: ${dirPath}, config_path: ${config_path}`);
 
-    const valeCheck = await checkValeInstalled();
-    if (!valeCheck.installed) {
-      return createValeNotInstalledResponse();
-    }
+    const missing = await valeMissingResponse();
+    if (missing) return missing;
 
     try {
       const result = await checkDirectory(dirPath, config_path, {
@@ -565,10 +559,8 @@ server.registerTool(
   async ({ style, max_rules, config_path }) => {
     debug(`list_rules called - style: ${style}, config_path: ${config_path}`);
 
-    const valeCheck = await checkValeInstalled();
-    if (!valeCheck.installed) {
-      return createValeNotInstalledResponse();
-    }
+    const missing = await valeMissingResponse();
+    if (missing) return missing;
 
     try {
       const { rules, total, truncated } = await listRules(config_path ?? valeConfigPath, style, max_rules);
@@ -614,10 +606,8 @@ server.registerTool(
   async ({ rule, config_path }) => {
     debug(`explain_rule called - rule: ${rule}, config_path: ${config_path}`);
 
-    const valeCheck = await checkValeInstalled();
-    if (!valeCheck.installed) {
-      return createValeNotInstalledResponse();
-    }
+    const missing = await valeMissingResponse();
+    if (missing) return missing;
 
     try {
       const result = await explainRule(rule, config_path ?? valeConfigPath);
@@ -810,17 +800,6 @@ async function initializeValeConfig(): Promise<void> {
  */
 async function main() {
   try {
-    // Show version and startup info
-    const title = `Vale MCP Server v${VERSION}`;
-    const boxWidth = Math.max(title.length + 4, 43); // At least 43 chars wide
-    const padding = ' '.repeat(Math.floor((boxWidth - title.length - 2) / 2));
-    const titleLine = `║${padding}${title}${padding}${title.length % 2 === 0 ? ' ' : ''}║`;
-    const border = '═'.repeat(boxWidth - 2);
-
-    console.error(`\n╔${border}╗`);
-    console.error(titleLine);
-    console.error(`╚${border}╝\n`);
-
     if (DEBUG) {
       console.error("🐛 Debug mode enabled\n");
     }

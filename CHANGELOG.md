@@ -4,6 +4,8 @@
 
 ### Fixed
 
+- `VALE_ALLOWED_ROOTS` no longer wrongly rejects folders whose name merely
+  starts with two dots (such as `..drafts`).
 - A relative `config_path` now works in every tool (it was resolved from
   Vale's working directory instead of the server's, giving `E100 ... does not
   exist`), and `VALE_ALLOWED_ROOTS` now judges the same path Vale uses.
@@ -17,6 +19,8 @@
 
 ### Changed
 
+- The decorative start-up banner on stderr is gone; the "running on stdio" line
+  remains.
 - Publishing: GitHub releases marked as prereleases (`X.Y.Z-rc.N`) are
   published to the `next` npm tag, so `latest` stays on the stable version;
   the workflow refuses a version/tag/prerelease-flag mismatch.

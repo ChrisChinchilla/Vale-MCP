@@ -120,7 +120,7 @@ Release follow-ups:
 
 ## 6. Audit of `main` (2026-11-18, after PRs #37-#40)
 
-Status: A1-A4 fixed (#41), A6 fixed in the prerelease-support PR; A5, A7, A8 open.
+Status: all eight fixed (A1-A4 in #41, A6 in #42, A5/A7/A8 in the cleanup PR).
 
 Full-repo audit; findings numbered as reported. Each has a concrete failing
 case. Not checked: Windows, Vale other than 3.27, how real MCP clients render
@@ -158,14 +158,14 @@ Should fix:
 
 Nice to have:
 
-- [ ] **A5.** `assertPathAllowed` wrongly denies folders named `..something`
+- [x] **A5.** `assertPathAllowed` wrongly denies folders named `..something`
       (`rel.startsWith("..")`); use `rel === ".." || rel.startsWith(".." + sep)`.
 - [x] **A6.** `publish.yml` interpolates `github.event.release.tag_name`
       straight into a shell line; pass it via `env:` instead (low risk: only
       release creators control it).
-- [ ] **A7.** Delete dead code (~35 lines): `stripCodeFence`, unused
+- [x] **A7.** Delete dead code (~35 lines): `stripCodeFence`, unused
       `ValeError` type, the ASCII start-up banner in `main()`.
-- [ ] **A8.** Merge the six copies of the "is Vale installed?" check in the
+- [x] **A8.** Merge the six copies of the "is Vale installed?" check in the
       tool handlers (`index.ts`) into one wrapper (~20 lines).
 
 ## 7. Prereleases

@@ -11,6 +11,22 @@ Keep entries short — a few lines, not a report.
 
 ---
 
+## 2026-11-19 — Audit cleanup A5/A7/A8
+
+A5: `assertPathAllowed` used `rel.startsWith("..")`, which also matched a
+folder named `..drafts`; now `rel !== ".." && !rel.startsWith(".." + sep)`.
+A7: removed `stripCodeFence` (Vale never fences its JSON; `parseValeOutput`
+just trims), the unused `ValeError` type and the ASCII start-up banner.
+A8: the six tool handlers repeated an installed-check; replaced by
+`valeMissingResponse()` (returns the error response or `undefined`), kept as a
+2-line guard rather than a handler-wrapping HOF, because wrapping loses
+zod's contextual typing of the handler arguments. New e2e test blanks `PATH`
+(tests now spawn `process.execPath`, not `"node"`) and checks all six tools
+return `vale_required`. All audit findings are now closed.
+Gotcha: Vale with no config errors on Linux CI (`E100: no config file found`)
+but works on a dev machine that has a global Vale config, so tests must
+always supply their own `.vale.ini` rather than rely on "no config".
+
 ## 2026-11-19 — 0.3.0-rc.1 published (prerelease path verified)
 
 Followed the prerelease skill: waited for CI on the merge commit, created

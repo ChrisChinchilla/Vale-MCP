@@ -136,12 +136,3 @@ export interface ValeSetupInfo {
 export interface ValeServerConfig {
   configPath?: string;
 }
-
-/**
- * Error result structure
- */
-export interface ValeError {
-  error: string;
-  details?: string;
-}
-

@@ -128,13 +128,6 @@ export async function syncValeStyles(configPath) {
         };
     }
 }
-/**
- * Strips markdown code fence formatting from Vale's JSON output
- */
-function stripCodeFence(output) {
-    // Remove ```json and ``` if present
-    return output.replace(/^```json\s*\n?/, "").replace(/\n?```\s*$/, "").trim();
-}
 class ValeReportedError extends Error {
 }
 /**
@@ -150,7 +143,7 @@ export function isSupportedValeVersion(versionOutput) {
  */
 function parseValeOutput(output) {
     try {
-        const cleanedOutput = stripCodeFence(output);
+        const cleanedOutput = output.trim();
         if (!cleanedOutput) {
             return {};
         }

@@ -163,14 +163,6 @@ export async function syncValeStyles(configPath?: string): Promise<{
   }
 }
 
-/**
- * Strips markdown code fence formatting from Vale's JSON output
- */
-function stripCodeFence(output: string): string {
-  // Remove ```json and ``` if present
-  return output.replace(/^```json\s*\n?/, "").replace(/\n?```\s*$/, "").trim();
-}
-
 class ValeReportedError extends Error {}
 
 /**
@@ -187,7 +179,7 @@ export function isSupportedValeVersion(versionOutput?: string): boolean {
  */
 function parseValeOutput(output: string): ValeRawOutput {
   try {
-    const cleanedOutput = stripCodeFence(output);
+    const cleanedOutput = output.trim();
     if (!cleanedOutput) {
       return {};
     }
