@@ -120,7 +120,7 @@ Release follow-ups:
 
 ## 6. Audit of `main` (2026-11-18, after PRs #37-#40)
 
-Status: A1-A4 fixed in the audit-fixes PR; A5-A8 open.
+Status: A1-A4 fixed (#41), A6 fixed in the prerelease-support PR; A5, A7, A8 open.
 
 Full-repo audit; findings numbered as reported. Each has a concrete failing
 case. Not checked: Windows, Vale other than 3.27, how real MCP clients render
@@ -160,11 +160,20 @@ Nice to have:
 
 - [ ] **A5.** `assertPathAllowed` wrongly denies folders named `..something`
       (`rel.startsWith("..")`); use `rel === ".." || rel.startsWith(".." + sep)`.
-- [ ] **A6.** `publish.yml` interpolates `github.event.release.tag_name`
+- [x] **A6.** `publish.yml` interpolates `github.event.release.tag_name`
       straight into a shell line; pass it via `env:` instead (low risk: only
       release creators control it).
 - [ ] **A7.** Delete dead code (~35 lines): `stripCodeFence`, unused
       `ValeError` type, the ASCII start-up banner in `main()`.
 - [ ] **A8.** Merge the six copies of the "is Vale installed?" check in the
       tool handlers (`index.ts`) into one wrapper (~20 lines).
+
+## 7. Prereleases
+
+- [x] `prerelease` skill and `publish.yml` support (`--tag next`, tag and
+      prerelease-flag guard, release inputs passed via `env:`).
+- [ ] First prerelease (0.3.0-rc.1) to exercise the path end to end; the
+      `--tag next` branch and the guards are untested on GitHub until then.
+- [ ] After the stable release following a prerelease, move the `next`
+      dist-tag (needs the owner's npm login): `npm dist-tag add vale-mcp@X.Y.Z next`.
 
