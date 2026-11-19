@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+### Fixed
+
+- A relative `config_path` now works in every tool (it was resolved from
+  Vale's working directory instead of the server's, giving `E100 ... does not
+  exist`), and `VALE_ALLOWED_ROOTS` now judges the same path Vale uses.
+- `vale_status` notices Vale being installed after the server started
+  (a failed check is no longer cached).
+- Error replies no longer include stack traces (local file paths) unless
+  `--debug` is set.
+- Very large results: output over 10 MB now fails with a clear message
+  instead of a JSON parse error, and `min_severity` is passed to Vale so such
+  runs print less.
+
 ### Changed
 
 - `list_rules` lists Vale's built-in `Vale.*` rules (from documentation, marked

@@ -5,7 +5,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
-import { checkFile, checkText, checkDirectory, listRules, explainRule, getValeSetup, isSupportedValeVersion, MAX_TEXT_BYTES } from "../build/vale-runner.js";
+import { checkFile, checkText, checkDirectory, listRules, explainRule, getValeSetup, syncValeStyles, checkValeInstalled, isSupportedValeVersion, MAX_TEXT_BYTES } from "../build/vale-runner.js";
 
 const fixtures = path.join(path.dirname(fileURLToPath(import.meta.url)), "fixtures");
 const config = path.join(fixtures, ".vale.ini");
@@ -211,4 +211,56 @@ test("VALE_TIMEOUT_MS kills a slow Vale run with a clear error", async () => {
   }
   const ok = await checkText("A foobaz.", ".md", config);
   assert.equal(ok.summary.total, 1);
+});
+
+test("a relative config_path works in every entry point (Vale runs from another cwd)", async () => {
+  const before = process.cwd();
+  process.chdir(path.dirname(fixtures)); // test/
+  const rel = path.join("fixtures", ".vale.ini");
+  try {
+    assert.equal((await checkFile(path.join(fixtures, "bad.md"), rel)).summary.warnings, 1);
+    assert.equal((await checkDirectory(path.join(fixtures, "docs"), rel)).summary.total, 3);
+    assert.equal((await checkText("A foobaz.", ".md", rel)).summary.total, 1);
+    assert.equal((await listRules(rel)).total, 3);
+    assert.equal((await explainRule("Test.Swap", rel)).rule.name, "Test.Swap");
+    assert.equal((await syncValeStyles(rel)).success, true);
+  } finally {
+    process.chdir(before);
+  }
+});
+
+test("VALE_ALLOWED_ROOTS judges a relative config_path from the server cwd, as Vale will", async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "vale-mcp-roots-"));
+  fs.mkdirSync(path.join(root, "proj", "deep"), { recursive: true });
+  fs.writeFileSync(path.join(root, "a.md"), "hi\n");
+  const before = process.cwd();
+  process.chdir(path.join(root, "proj", "deep"));
+  process.env.VALE_ALLOWED_ROOTS = root;
+  try {
+    // Resolves outside root from the server cwd; before the fix it was checked as one
+    // path and run as another
+    await assert.rejects(checkFile(path.join(root, "a.md"), "../../../outside.ini"), /Access denied/);
+  } finally {
+    process.chdir(before);
+    delete process.env.VALE_ALLOWED_ROOTS;
+  }
+});
+
+test("Vale installed after the server started is noticed (failures are not cached)", async () => {
+  const path_ = process.env.PATH;
+  try {
+    process.env.PATH = "";
+    assert.equal((await checkValeInstalled()).installed, false);
+  } finally {
+    process.env.PATH = path_;
+  }
+  assert.equal((await checkValeInstalled()).installed, true);
+});
+
+test("output over the buffer cap gets its own message, and min_severity avoids it", async () => {
+  const big = "foobar ".repeat(140_000); // ~1 MB, one warning per word: far more than 10 MB of JSON
+  await assert.rejects(checkText(big, ".md", config), /more than 10 MB of output/);
+  // Vale itself drops the warnings, so nothing overflows
+  const r = await checkText(big, ".md", config, { minSeverity: "error" });
+  assert.equal(r.summary.total, 0);
 });

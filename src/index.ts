@@ -241,7 +241,7 @@ For more information, see: https://vale.sh/docs/topics/packages/`,
         type: "text",
         text: JSON.stringify({
           error: errorMessage,
-          details: errorDetails,
+          details: DEBUG ? errorDetails : undefined, // stacks hold local paths
         }),
       },
     ],
