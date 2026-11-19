@@ -15,7 +15,7 @@ const entry = path.join(root, "build", "index.js");
 async function connect(env = {}, cwd = fixtures) {
   const client = new Client({ name: "test-client", version: "0.0.0" });
   const transport = new StdioClientTransport({
-    command: "node",
+    command: process.execPath, // absolute, so tests can blank PATH
     args: [entry],
     cwd,
     env: { ...process.env, ...env },
@@ -216,4 +216,26 @@ test("vale_status includes config, packages and installed styles", async () => {
   assert.match(status.config_path, /fixtures[\\/]\.vale\.ini$/);
   assert.deepEqual(status.packages, []);
   assert.ok(status.installed_styles.includes("Test"));
+});
+
+test("every Vale tool reports a missing Vale, and recovers when it appears", async () => {
+  const noVale = await connect({ PATH: "" });
+  try {
+    for (const [name, args] of [
+      ["check_text", { text: "hello" }],
+      ["check_file", { path: path.join(fixtures, "bad.md") }],
+      ["check_directory", { path: fixtures }],
+      ["list_rules", {}],
+      ["explain_rule", { rule: "Test.Foo" }],
+      ["vale_sync", {}],
+    ]) {
+      const r = await noVale.callTool({ name, arguments: args });
+      assert.equal(r.isError, true, name);
+      assert.equal(JSON.parse(text(r)).vale_required, true, name);
+    }
+    const status = JSON.parse(text(await noVale.callTool({ name: "vale_status", arguments: {} })));
+    assert.equal(status.installed, false);
+  } finally {
+    await noVale.close();
+  }
 });

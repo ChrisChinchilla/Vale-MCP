@@ -264,3 +264,18 @@ test("output over the buffer cap gets its own message, and min_severity avoids i
   const r = await checkText(big, ".md", config, { minSeverity: "error" });
   assert.equal(r.summary.total, 0);
 });
+
+test("VALE_ALLOWED_ROOTS allows a folder merely named like '..drafts' but not real parent escapes", async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "vale-mcp-roots-"));
+  fs.mkdirSync(path.join(root, "..drafts"));
+  fs.writeFileSync(path.join(root, "..drafts", "a.md"), "hi\n");
+  fs.writeFileSync(path.join(path.dirname(root), "outside.md"), "hi\n");
+  process.env.VALE_ALLOWED_ROOTS = root;
+  try {
+    const r = await checkFile(path.join(root, "..drafts", "a.md"));
+    assert.equal(r.summary.total, 0);
+    await assert.rejects(checkFile(path.join(root, "..", "outside.md")), /Access denied/);
+  } finally {
+    delete process.env.VALE_ALLOWED_ROOTS;
+  }
+});

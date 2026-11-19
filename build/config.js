@@ -83,7 +83,8 @@ export async function assertPathAllowed(target) {
             continue;
         }
         const rel = path.relative(realRoot, real);
-        if (rel === "" || (!rel.startsWith("..") && !path.isAbsolute(rel)))
+        // ".." alone or "../x" is outside; a folder merely named "..drafts" is inside
+        if (rel === "" || (rel !== ".." && !rel.startsWith(".." + path.sep) && !path.isAbsolute(rel)))
             return;
     }
     throw new PathNotAllowedError(`Access denied: ${target} is outside the directories allowed by VALE_ALLOWED_ROOTS`);
