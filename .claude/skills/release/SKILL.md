@@ -62,6 +62,9 @@ If unsure, ask the user. State the chosen version and why.
 - `npm view vale-mcp version` shows X.Y.Z. The registry can lag a few minutes
   after the workflow goes green (log says "may take a few minutes"); poll
   `npm view vale-mcp@X.Y.Z version` every ~15s before treating it as a failure.
+  The tarball can lag the metadata by ~10 minutes (an `npx` E404 while
+  `npm view` already works); curl the `.tgz` URL and check the workflow log
+  for `+ vale-mcp@X.Y.Z` before assuming the publish failed.
   Provenance: `npm view vale-mcp@X.Y.Z dist.attestations.provenance.predicateType`.
 - Smoke test from outside the repo: `cd $(mktemp -d) && npx -y vale-mcp@X.Y.Z --version`
   prints X.Y.Z.

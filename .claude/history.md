@@ -11,6 +11,18 @@ Keep entries short — a few lines, not a report.
 
 ---
 
+## 2026-11-19 — 0.3.0-rc.2 published (and a registry-lag gotcha)
+
+Same flow as rc.1: CI green on the merge commit, `gh release create
+v0.3.0-rc.2 --prerelease`, workflow published with `--tag next`, provenance
+attested. Final state: `{latest: 0.2.1, next: 0.3.0-rc.2}`,
+`npx vale-mcp@next --version` = 0.3.0-rc.2, `@latest` = 0.2.1. New gotcha:
+metadata and provenance showed up on the registry several minutes before the
+tarball (HTTP 404 on the .tgz for ~10 minutes, so `npx` failed with E404). The
+workflow log (`+ vale-mcp@0.3.0-rc.2`) is the source of truth; retry the smoke
+test until the .tgz returns 200 rather than re-releasing (versions can't be
+reused). rc.2 only contained the A5/A7/A8 cleanup on top of rc.1.
+
 ## 2026-11-19 — Audit cleanup A5/A7/A8
 
 A5: `assertPathAllowed` used `rel.startsWith("..")`, which also matched a

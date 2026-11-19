@@ -62,7 +62,11 @@ step, so only do it when the user has asked for it.
 ## 5. Verify
 
 - Poll `npm view vale-mcp@X.Y.Z-rc.N version` every ~15s (the registry lags a
-  few minutes after the workflow goes green).
+  few minutes after the workflow goes green). The metadata can appear before
+  the tarball: rc.2's tarball returned 404 for ~10 minutes after `npm view`
+  already showed it, so `npx` failed with E404. Check
+  `curl -s -o /dev/null -w '%{http_code}' https://registry.npmjs.org/vale-mcp/-/vale-mcp-X.Y.Z-rc.N.tgz`
+  and only treat it as a failure if the workflow log lacks `+ vale-mcp@X.Y.Z-rc.N`.
 - `npm view vale-mcp dist-tags --json`: `next` is the new rc and **`latest`
   is unchanged**. If `latest` moved, stop and tell the user.
 - Smoke test outside the repo: `cd $(mktemp -d) && npx -y vale-mcp@next --version`.
