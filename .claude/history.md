@@ -11,6 +11,17 @@ Keep entries short — a few lines, not a report.
 
 ---
 
+## 2026-11-19 — 0.3.0-rc.1 published (prerelease path verified)
+
+Followed the prerelease skill: waited for CI on the merge commit, created
+`v0.3.0-rc.1` with `--prerelease`, workflow ran `npm publish --tag next`
+(log: "with tag next"), registry served it a few minutes later. Result:
+dist-tags `{latest: 0.2.1, next: 0.3.0-rc.1}`, provenance attested,
+`npx vale-mcp@next --version` = 0.3.0-rc.1, `@latest` still 0.2.1. Note: CI
+on the merge commit was still running when I started; the skill's
+"CI green on main" precondition means polling `gh run list` first. After
+testing: cut 0.3.0 with the release skill, then the owner moves `next`.
+
 ## 2026-11-19 — Prerelease support
 
 Added a `prerelease` skill and taught `publish.yml` about prereleases.
