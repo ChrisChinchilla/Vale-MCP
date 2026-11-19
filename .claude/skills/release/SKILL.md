@@ -13,6 +13,9 @@ workflow `publish.yml`. Note a release-triggered workflow runs the workflow
 file *as of the tag*, so workflow fixes need a new tag, not just a re-run. Never run `npm publish` locally.
 The release PR itself changes nothing outward-facing; creating the GitHub
 Release does, so only do that step when the user has asked for the release.
+To publish a build for testing first, use the `prerelease` skill (`-rc.N`
+versions go to the `next` tag, never `latest`). This skill is for stable
+versions: the workflow refuses a stable version flagged as a prerelease.
 
 ## 1. Preconditions
 
@@ -32,7 +35,8 @@ If unsure, ask the user. State the chosen version and why.
 ## 3. Release PR
 
 1. `git checkout -b release/X.Y.Z`
-2. `npm version X.Y.Z --no-git-tag-version` (edits `package.json` and the lockfile).
+2. `npm version X.Y.Z --no-git-tag-version` (edits `package.json` and the lockfile;
+   this also works when the current version is an rc of X.Y.Z).
 3. `CHANGELOG.md`: rename `## Unreleased` to `## Version X.Y.Z - <short title> (YYYY-MM-DD)`,
    and put a fresh empty `## Unreleased` above it if there's unreleased work to come.
 4. `npm test` (it rebuilds `build/`; `build/` is committed and CI fails if it
@@ -61,6 +65,9 @@ If unsure, ask the user. State the chosen version and why.
   Provenance: `npm view vale-mcp@X.Y.Z dist.attestations.provenance.predicateType`.
 - Smoke test from outside the repo: `cd $(mktemp -d) && npx -y vale-mcp@X.Y.Z --version`
   prints X.Y.Z.
+- If a prerelease of this version was published, `next` still points at it:
+  ask the user to run `npm dist-tag add vale-mcp@X.Y.Z next` (dist-tag
+  changes need their npm login; the OIDC publish doesn't cover them).
 - Report the release URL and npm version to the user.
 
 ## If something fails

@@ -17,6 +17,9 @@
 
 ### Changed
 
+- Publishing: GitHub releases marked as prereleases (`X.Y.Z-rc.N`) are
+  published to the `next` npm tag, so `latest` stays on the stable version;
+  the workflow refuses a version/tag/prerelease-flag mismatch.
 - `list_rules` lists Vale's built-in `Vale.*` rules (from documentation, marked
   `builtin`) and `explain_rule` describes them; `list_rules` reads `>`/`|`
   block values in rule YAML and accepts `max_rules` (results include `total`

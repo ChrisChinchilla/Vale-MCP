@@ -14,10 +14,30 @@ jobs:
               with:
                   node-version: 24 # bundles npm >= 11.5.1, required for trusted publishing
                   registry-url: "https://registry.npmjs.org"
-            - name: "Check tag matches package.json"
-              run: test "v$(node -p "require('./package.json').version")" = "${{ github.event.release.tag_name }}"
+            # Release inputs go through env, not inline ${{ }}, so a crafted tag name can't inject shell
+            - name: "Check tag and prerelease flag match package.json"
+              env:
+                  TAG: ${{ github.event.release.tag_name }}
+                  PRERELEASE: ${{ github.event.release.prerelease }}
+              run: |
+                  VERSION=$(node -p "require('./package.json').version")
+                  [ "v$VERSION" = "$TAG" ] || { echo "Tag $TAG does not match package.json version $VERSION"; exit 1; }
+                  case "$VERSION" in
+                      *-*) [ "$PRERELEASE" = "true" ] || { echo "$VERSION is a prerelease version but the GitHub release is not marked as one"; exit 1; } ;;
+                      *)   [ "$PRERELEASE" = "false" ] || { echo "$VERSION is a stable version but the GitHub release is marked as a prerelease"; exit 1; } ;;
+                  esac
             - run: npm --version
             - run: npm ci
             # Authenticated via OIDC trusted publisher (npmjs.com package settings:
             # ChrisChinchilla/Vale-MCP, publish.yml); no token. prepublishOnly builds.
-            - run: npm publish --access public
+            # Prereleases go to the "next" dist-tag so "latest" stays on the stable version
+            # (npm 11 refuses to publish a prerelease version without an explicit --tag).
+            - name: "Publish"
+              env:
+                  PRERELEASE: ${{ github.event.release.prerelease }}
+              run: |
+                  if [ "$PRERELEASE" = "true" ]; then
+                      npm publish --access public --tag next
+                  else
+                      npm publish --access public
+                  fi

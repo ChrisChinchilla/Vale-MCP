@@ -11,6 +11,23 @@ Keep entries short — a few lines, not a report.
 
 ---
 
+## 2026-11-19 — Prerelease support
+
+Added a `prerelease` skill and taught `publish.yml` about prereleases.
+Design: a GitHub release marked `--prerelease` with version `X.Y.Z-rc.N`
+publishes to the npm `next` dist-tag; stable releases keep `latest`.
+Reasons: npm 11 refuses `npm publish` of a prerelease version without
+`--tag` (so the workflow must pass one), and an rc must never become
+`latest`. The workflow now fails when tag, `package.json` version and the
+prerelease flag disagree (guard logic was tested locally with a shell
+simulation, including an injection-style tag). It also fixes audit A6: the
+tag name now reaches the shell through `env:`, not inline `${{ }}`. The
+prerelease PR bumps `package.json` on `main` and leaves the CHANGELOG
+"Unreleased" heading alone (only the stable release finalizes it). A variant
+for unmerged branches is in the skill. Open: first real prerelease, and
+moving `next` after a stable release is a manual owner step (dist-tags need
+a login; OIDC only covers publish).
+
 ## 2026-11-18 — Audit of main (ponytail-audit)
 
 Audited `main` after #37-#40; 8 findings (1 must, 3 should, 4 nice), all
