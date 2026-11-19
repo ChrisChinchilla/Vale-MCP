@@ -268,6 +268,7 @@ test("output over the buffer cap gets its own message, and min_severity avoids i
 test("VALE_ALLOWED_ROOTS allows a folder merely named like '..drafts' but not real parent escapes", async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "vale-mcp-roots-"));
   fs.mkdirSync(path.join(root, "..drafts"));
+  fs.mkdirSync(path.join(root, "styles"));
   // Own config inside the root: Vale with no config at all errors on CI (no global config there)
   fs.writeFileSync(path.join(root, ".vale.ini"), "StylesPath = styles\n[*.md]\nBasedOnStyles =\n");
   fs.writeFileSync(path.join(root, "..drafts", "a.md"), "hi\n");
