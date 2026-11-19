@@ -172,8 +172,8 @@ Nice to have:
 
 - [x] `prerelease` skill and `publish.yml` support (`--tag next`, tag and
       prerelease-flag guard, release inputs passed via `env:`).
-- [ ] First prerelease (0.3.0-rc.1) to exercise the path end to end; the
-      `--tag next` branch and the guards are untested on GitHub until then.
+- [ ] First prerelease (0.3.0-rc.1, PR open) to exercise the path end to end;
+      the `--tag next` branch and the guards are untested on GitHub until then.
 - [ ] After the stable release following a prerelease, move the `next`
       dist-tag (needs the owner's npm login): `npm dist-tag add vale-mcp@X.Y.Z next`.
 
