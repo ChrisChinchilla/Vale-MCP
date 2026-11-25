@@ -300,3 +300,10 @@ Original single-file implementation was split into `types.ts` / `config.ts`
 / `vale-runner.ts` / `index.ts` for maintainability, and `check_file` /
 `vale_status` / `vale_sync` replaced an earlier `style-text` /
 `vale-config-info` tool pair. Full rationale in `CHANGELOG.md`.
+
+## 2026-11-25 — 0.3.0 release
+
+The `getValeSetup` test in `test/runner.test.mjs` fails on machines whose
+`~/Library/Application Support/vale/styles` holds extra styles (Vale adds that
+dir to its paths); CI is unaffected. Not hermetic — consider asserting
+`includes("Alpha")` instead of deep equality.
