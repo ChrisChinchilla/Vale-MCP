@@ -160,7 +160,7 @@ jobs:
 
       - name: Open a draft pull request on the website
         if: steps.release.outputs.skip != 'true'
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@v8
         with:
           path: site
           token: ${{ secrets.SITE_REPO_TOKEN }}
