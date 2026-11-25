@@ -98,14 +98,14 @@ jobs:
 
       - name: Check out the released project
         if: steps.release.outputs.skip != 'true'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ env.TAG }}
           path: project
 
       - name: Check out the website
         if: steps.release.outputs.skip != 'true'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: ${{ env.SITE_REPO }}
           ref: ${{ env.SITE_BRANCH }}
