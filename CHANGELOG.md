@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## Version 0.3.0 - Rule tools, resources and hardening (2026-11-25)
+
 ### Fixed
 
 - `VALE_ALLOWED_ROOTS` no longer wrongly rejects folders whose name merely
